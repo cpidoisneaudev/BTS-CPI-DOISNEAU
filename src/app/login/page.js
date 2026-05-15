@@ -1,0 +1,235 @@
+'use client';
+
+import { useState } from 'react';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+const GoogleIcon = () => (
+  <svg viewBox="0 0 24 24" className="w-5 h-5">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+  </svg>
+);
+
+export default function LoginPage() {
+  const router = useRouter();
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [error, setError] = useState('');
+
+  const createSession = async (user) => {
+    const token = await user.getIdToken();
+    document.cookie = `session=${token}; path=/; max-age=86400; SameSite=Strict`;
+  };
+
+  // Connexion email + mot de passe
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const result = await signInWithEmailAndPassword(auth, form.email, form.password);
+      await createSession(result.user);
+
+      // Vérifie si le profil Firestore existe
+      const userSnap = await getDoc(doc(db, 'users', result.user.uid));
+      if (userSnap.exists()) {
+        router.push('/dashboard');
+      } else {
+        // Compte Firebase Auth existe mais pas de profil → inscription incomplète
+        router.push('/inscription');
+      }
+    } catch (err) {
+      console.error(err);
+      switch (err.code) {
+        case 'auth/user-not-found':
+          setError('Aucun compte trouvé avec cet email.');
+          break;
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          setError('Mot de passe incorrect.');
+          break;
+        case 'auth/invalid-email':
+          setError('Adresse email invalide.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Trop de tentatives. Réessayez plus tard.');
+          break;
+        default:
+          setError('Erreur de connexion. Veuillez réessayer.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Connexion Google
+  const handleGoogle = async () => {
+    setLoadingGoogle(true);
+    setError('');
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      await createSession(result.user);
+
+      const userSnap = await getDoc(doc(db, 'users', result.user.uid));
+      if (userSnap.exists()) {
+        router.push('/dashboard');
+      } else {
+        router.push('/inscription');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Erreur de connexion Google. Veuillez réessayer.');
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-6">
+      <div className="w-full max-w-md">
+
+        {/* Logo */}
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-12 h-12 bg-[#00b4d8] rounded-xl flex items-center justify-center mb-4">
+            <svg viewBox="0 0 18 18" className="w-6 h-6 fill-[#0d1117]">
+              <polygon points="9,1 17,5 17,13 9,17 1,13 1,5"/>
+            </svg>
+          </div>
+          <h1 className="text-xl font-medium text-[#e6edf3]">
+            CPI <span className="text-[#00b4d8]">Doisneau</span>
+          </h1>
+          <p className="text-[#8b949e] text-sm mt-1">Espace pédagogique</p>
+        </div>
+
+        {/* Carte */}
+        <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-8">
+
+          <h2 className="text-lg font-medium text-[#e6edf3] mb-6">
+            Connexion
+          </h2>
+
+          {/* Erreur */}
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-5">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Formulaire */}
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+
+            {/* Email */}
+            <div>
+              <label className="text-xs text-[#8b949e] mb-1.5 block">
+                Adresse email
+              </label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="jean.dupont@email.com"
+                required
+                className="w-full bg-[#0d1117] border border-[#21262d] rounded-lg px-4 py-2.5 text-sm text-[#e6edf3] placeholder-[#8b949e] focus:outline-none focus:border-[#00b4d8] transition-colors"
+              />
+            </div>
+
+            {/* Mot de passe */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs text-[#8b949e]">
+                  Mot de passe
+                </label>
+                <Link
+                  href="/reset-password"
+                  className="text-xs text-[#00b4d8] hover:underline"
+                >
+                  Mot de passe oublié ?
+                </Link>
+              </div>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  required
+                  className="w-full bg-[#0d1117] border border-[#21262d] rounded-lg px-4 py-2.5 text-sm text-[#e6edf3] placeholder-[#8b949e] focus:outline-none focus:border-[#00b4d8] transition-colors pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8b949e] hover:text-[#e6edf3] transition-colors"
+                >
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </div>
+
+            {/* Bouton connexion */}
+            <button
+              type="submit"
+              disabled={loading || loadingGoogle}
+              className="w-full bg-[#00b4d8] text-[#0d1117] font-medium text-sm py-3 rounded-lg hover:bg-[#0099bb] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-1"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-[#0d1117] border-t-transparent rounded-full animate-spin"/>
+                  Connexion en cours...
+                </span>
+              ) : 'Se connecter'}
+            </button>
+
+          </form>
+
+          {/* Séparateur */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-[#21262d]"/>
+            <span className="text-xs text-[#8b949e]">ou</span>
+            <div className="flex-1 h-px bg-[#21262d]"/>
+          </div>
+
+          {/* Bouton Google */}
+          <button
+            onClick={handleGoogle}
+            disabled={loading || loadingGoogle}
+            className="w-full flex items-center justify-center gap-3 bg-[#0d1117] border border-[#21262d] text-[#e6edf3] text-sm font-medium py-3 rounded-lg hover:border-[#8b949e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingGoogle ? (
+              <span className="w-4 h-4 border-2 border-[#8b949e] border-t-transparent rounded-full animate-spin"/>
+            ) : (
+              <GoogleIcon />
+            )}
+            {loadingGoogle ? 'Connexion en cours...' : 'Continuer avec Google'}
+          </button>
+
+          {/* Lien inscription */}
+          <p className="text-xs text-[#8b949e] text-center mt-6">
+            Pas encore de compte ?{' '}
+            <Link href="/inscription" className="text-[#00b4d8] hover:underline">
+              S&apos;inscrire
+            </Link>
+          </p>
+
+        </div>
+
+        {/* Retour accueil */}
+        <p className="text-center mt-6">
+          <Link href="/" className="text-xs text-[#8b949e] hover:text-[#e6edf3] transition-colors">
+            ← Retour à l&apos;accueil
+          </Link>
+        </p>
+
+      </div>
+    </div>
+  );
+}
