@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const GoogleIcon = () => (
@@ -17,7 +16,6 @@ const GoogleIcon = () => (
 );
 
 export default function LoginPage() {
-  const router = useRouter();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -29,7 +27,6 @@ export default function LoginPage() {
     document.cookie = `session=${token}; path=/; max-age=86400; SameSite=Strict`;
   };
 
-  // Connexion email + mot de passe
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -37,14 +34,11 @@ export default function LoginPage() {
     try {
       const result = await signInWithEmailAndPassword(auth, form.email, form.password);
       await createSession(result.user);
-
-      // Vérifie si le profil Firestore existe
       const userSnap = await getDoc(doc(db, 'users', result.user.uid));
       if (userSnap.exists()) {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
-        // Compte Firebase Auth existe mais pas de profil → inscription incomplète
-        router.push('/inscription');
+        window.location.href = '/inscription';
       }
     } catch (err) {
       console.error(err);
@@ -70,7 +64,6 @@ export default function LoginPage() {
     }
   };
 
-  // Connexion Google
   const handleGoogle = async () => {
     setLoadingGoogle(true);
     setError('');
@@ -79,12 +72,11 @@ export default function LoginPage() {
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
       await createSession(result.user);
-
       const userSnap = await getDoc(doc(db, 'users', result.user.uid));
       if (userSnap.exists()) {
-        router.push('/dashboard');
+        window.location.href = '/dashboard';
       } else {
-        router.push('/inscription');
+        window.location.href = '/inscription';
       }
     } catch (err) {
       console.error(err);
@@ -118,21 +110,16 @@ export default function LoginPage() {
             Connexion
           </h2>
 
-          {/* Erreur */}
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 mb-5">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Formulaire */}
           <form onSubmit={handleLogin} className="flex flex-col gap-4">
 
-            {/* Email */}
             <div>
-              <label className="text-xs text-[#8b949e] mb-1.5 block">
-                Adresse email
-              </label>
+              <label className="text-xs text-[#8b949e] mb-1.5 block">Adresse email</label>
               <input
                 type="email"
                 value={form.email}
@@ -143,16 +130,10 @@ export default function LoginPage() {
               />
             </div>
 
-            {/* Mot de passe */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="text-xs text-[#8b949e]">
-                  Mot de passe
-                </label>
-                <Link
-                  href="/reset-password"
-                  className="text-xs text-[#00b4d8] hover:underline"
-                >
+                <label className="text-xs text-[#8b949e]">Mot de passe</label>
+                <Link href="/reset-password" className="text-xs text-[#00b4d8] hover:underline">
                   Mot de passe oublié ?
                 </Link>
               </div>
@@ -175,7 +156,6 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Bouton connexion */}
             <button
               type="submit"
               disabled={loading || loadingGoogle}
@@ -191,14 +171,12 @@ export default function LoginPage() {
 
           </form>
 
-          {/* Séparateur */}
           <div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-[#21262d]"/>
             <span className="text-xs text-[#8b949e]">ou</span>
             <div className="flex-1 h-px bg-[#21262d]"/>
           </div>
 
-          {/* Bouton Google */}
           <button
             onClick={handleGoogle}
             disabled={loading || loadingGoogle}
@@ -206,13 +184,10 @@ export default function LoginPage() {
           >
             {loadingGoogle ? (
               <span className="w-4 h-4 border-2 border-[#8b949e] border-t-transparent rounded-full animate-spin"/>
-            ) : (
-              <GoogleIcon />
-            )}
+            ) : <GoogleIcon />}
             {loadingGoogle ? 'Connexion en cours...' : 'Continuer avec Google'}
           </button>
 
-          {/* Lien inscription */}
           <p className="text-xs text-[#8b949e] text-center mt-6">
             Pas encore de compte ?{' '}
             <Link href="/inscription" className="text-[#00b4d8] hover:underline">
@@ -222,7 +197,6 @@ export default function LoginPage() {
 
         </div>
 
-        {/* Retour accueil */}
         <p className="text-center mt-6">
           <Link href="/" className="text-xs text-[#8b949e] hover:text-[#e6edf3] transition-colors">
             ← Retour à l&apos;accueil

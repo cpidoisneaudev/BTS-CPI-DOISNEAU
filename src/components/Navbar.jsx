@@ -46,6 +46,32 @@ export default function Navbar() {
     router.push('/');
   };
 
+  // Avatar — photo Google ou initiales
+  const Avatar = ({ size = 32 }) => {
+    if (user?.photoURL) {
+      return (
+        <Image
+          src={user.photoURL}
+          alt={user.displayName || 'Avatar'}
+          width={size}
+          height={size}
+          className="rounded-full border border-[#21262d]"
+        />
+      );
+    }
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xs"
+      >
+        {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
+      </div>
+    );
+  };
+
+  // Prénom depuis Firestore ou Firebase Auth
+  const prenom = userData?.prenom || user?.displayName?.split(' ')[0] || '';
+
   return (
     <nav className="bg-[#0d1117] border-b border-[#21262d] sticky top-0 z-50" suppressHydrationWarning>
 
@@ -97,7 +123,6 @@ export default function Navbar() {
           {mounted && user ? (
             <div className="flex items-center gap-4">
 
-              {/* Dashboard */}
               <Link
                 href="/dashboard"
                 className={`text-sm transition-colors ${
@@ -109,7 +134,6 @@ export default function Navbar() {
                 Dashboard
               </Link>
 
-              {/* Admin uniquement */}
               {userData?.role === 'ADMIN' && (
                 <Link
                   href="/admin"
@@ -123,20 +147,10 @@ export default function Navbar() {
                 </Link>
               )}
 
-              {/* Avatar + nom + logout */}
+              {/* Avatar + prénom + logout */}
               <div className="flex items-center gap-3 pl-4 border-l border-[#21262d]">
-                {user.photoURL && (
-                  <Image
-                    src={user.photoURL}
-                    alt={user.displayName || 'Avatar'}
-                    width={32}
-                    height={32}
-                    className="rounded-full border border-[#21262d]"
-                  />
-                )}
-                <span className="text-sm text-[#e6edf3]">
-                  {user.displayName?.split(' ')[0]}
-                </span>
+                <Avatar size={32} />
+                <span className="text-sm text-[#e6edf3]">{prenom}</span>
                 <button
                   onClick={handleLogout}
                   className="text-xs text-[#8b949e] hover:text-red-400 transition-colors"
@@ -147,7 +161,6 @@ export default function Navbar() {
 
             </div>
           ) : (
-            /* Si non connecté */
             <Link
               href="/login"
               className="bg-[#00b4d8] text-[#0d1117] text-sm font-medium px-4 py-2 rounded-md hover:bg-[#0099bb] transition-colors"
@@ -198,7 +211,6 @@ export default function Navbar() {
             </Link>
           ))}
 
-          {/* Notification Admin mobile */}
           {mounted && userData?.role === 'ADMIN' && comptesEnAttente > 0 && (
             <Link
               href="/admin/validation"
@@ -228,16 +240,8 @@ export default function Navbar() {
                 </Link>
               )}
               <div className="flex items-center gap-3 py-2">
-                {user.photoURL && (
-                  <Image
-                    src={user.photoURL}
-                    alt={user.displayName || 'Avatar'}
-                    width={32}
-                    height={32}
-                    className="rounded-full border border-[#21262d]"
-                  />
-                )}
-                <span className="text-sm text-[#e6edf3]">{user.displayName}</span>
+                <Avatar size={32} />
+                <span className="text-sm text-[#e6edf3]">{prenom}</span>
               </div>
               <button
                 onClick={handleLogout}

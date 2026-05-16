@@ -62,15 +62,26 @@ export default function UtilisateursPage() {
   };
 
   // Supprimer un utilisateur
-  const supprimerUtilisateur = async (uid) => {
-    if (!confirm('Supprimer cet utilisateur ?')) return;
-    try {
-      await deleteDoc(doc(db, 'users', uid));
-      setUtilisateurs(utilisateurs.filter(u => u.id !== uid));
-    } catch (err) {
-      console.error(err);
+const supprimerUtilisateur = async (uid) => {
+  if (!confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return;
+  try {
+    const res = await fetch('/api/admin/supprimer-utilisateur', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'Erreur serveur');
     }
-  };
+
+    setUtilisateurs(utilisateurs.filter(u => u.id !== uid));
+  } catch (err) {
+    console.error(err);
+    alert('Erreur lors de la suppression : ' + err.message);
+  }
+};
 
   // Filtrage
   const utilisateursFiltres = utilisateurs.filter(u => {
