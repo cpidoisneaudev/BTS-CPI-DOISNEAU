@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import Image from "next/image";
-import Link from "next/link";
 
 export default function ProfilPage() {
   const { user, userData, loading } = useAuth();
@@ -37,12 +36,16 @@ export default function ProfilPage() {
     setError("");
     setSuccess(false);
     try {
-      await updateDoc(doc(db, "users", user.uid), {
-        prenom: form.prenom,
-        nom: form.nom,
-        promotion: form.promotion,
-      });
-      window.location.href = "/dashboard?success=profil";
+      const dataToUpdate = { prenom: form.prenom, nom: form.nom };
+      if (userData?.role === 'ETUDIANT') {
+        dataToUpdate.promotion = form.promotion;
+      }
+      await updateDoc(doc(db, "users", user.uid), dataToUpdate);
+      setSuccess(true);
+      // Redirection après 1.5 secondes sans page blanche
+      setTimeout(() => {
+        router.push("/dashboard?success=profil");
+      }, 1500);
     } catch (err) {
       console.error(err);
       setError("Erreur lors de la sauvegarde.");
@@ -62,7 +65,7 @@ export default function ProfilPage() {
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <div className="max-w-2xl mx-auto px-6 md:px-10 py-12">
-        {/* Retour */}
+
         <button
           onClick={() => router.push("/dashboard")}
           className="text-[#8b949e] hover:text-[#e6edf3] transition-colors text-sm mb-6"
@@ -71,63 +74,43 @@ export default function ProfilPage() {
         </button>
 
         <h1 className="text-2xl font-medium text-[#e6edf3] mb-2">Mon profil</h1>
-        <p className="text-[#8b949e] text-sm mb-8">
-          Modifiez vos informations personnelles
-        </p>
+        <p className="text-[#8b949e] text-sm mb-8">Modifiez vos informations personnelles</p>
 
         {/* Avatar */}
         <div className="flex items-center gap-4 mb-8">
           {user?.photoURL ? (
-            <Image
-              src={user.photoURL}
-              alt="Avatar"
-              width={64}
-              height={64}
-              className="rounded-full border-2 border-[#00b4d8]"
-            />
+            <Image src={user.photoURL} alt="Avatar" width={64} height={64} className="rounded-full border-2 border-[#00b4d8]" />
           ) : (
             <div className="w-16 h-16 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xl">
-              {form.prenom?.charAt(0)}
-              {form.nom?.charAt(0)}
+              {form.prenom?.charAt(0)}{form.nom?.charAt(0)}
             </div>
           )}
           <div>
-            <p className="text-sm font-medium text-[#e6edf3]">
-              {form.prenom} {form.nom}
-            </p>
+            <p className="text-sm font-medium text-[#e6edf3]">{form.prenom} {form.nom}</p>
             <p className="text-xs text-[#8b949e]">{user?.email}</p>
             <span className="text-xs bg-[#00b4d8]/10 text-[#00b4d8] border border-[#00b4d8]/30 px-2 py-0.5 rounded mt-1 inline-block">
-              🎓 Étudiant
+              {userData?.role === "ADMIN" ? "⚙️ Admin" : userData?.role === "PROF" ? "👨‍🏫 Professeur" : "🎓 Étudiant"}
             </span>
           </div>
         </div>
 
         {/* Formulaire */}
-        <form
-          onSubmit={handleSave}
-          className="bg-[#161b22] border border-[#21262d] rounded-xl p-6 flex flex-col gap-5"
-        >
-          {/* Succès */}
+        <form onSubmit={handleSave} className="bg-[#161b22] border border-[#21262d] rounded-xl p-6 flex flex-col gap-5">
+
           {success && (
             <div className="bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-3">
-              <p className="text-green-400 text-sm">
-                ✅ Profil mis à jour avec succès !
-              </p>
+              <p className="text-green-400 text-sm">✅ Profil mis à jour ! Redirection en cours...</p>
             </div>
           )}
 
-          {/* Erreur */}
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
 
-          {/* Prénom */}
           <div>
-            <label className="text-xs text-[#8b949e] mb-1.5 block">
-              Prénom
-            </label>
+            <label className="text-xs text-[#8b949e] mb-1.5 block">Prénom</label>
             <input
               type="text"
               value={form.prenom}
@@ -137,7 +120,6 @@ export default function ProfilPage() {
             />
           </div>
 
-          {/* Nom */}
           <div>
             <label className="text-xs text-[#8b949e] mb-1.5 block">Nom</label>
             <input
@@ -149,7 +131,6 @@ export default function ProfilPage() {
             />
           </div>
 
-          {/* Email — non modifiable */}
           <div>
             <label className="text-xs text-[#8b949e] mb-1.5 block">
               Email <span className="text-[#8b949e]">(non modifiable)</span>
@@ -162,28 +143,26 @@ export default function ProfilPage() {
             />
           </div>
 
-          {/* Promotion */}
-          <div>
-            <label className="text-xs text-[#8b949e] mb-1.5 block">
-              Promotion
-            </label>
-            <select
-              value={form.promotion}
-              onChange={(e) => setForm({ ...form, promotion: e.target.value })}
-              required
-              className="w-full bg-[#0d1117] border border-[#21262d] rounded-lg px-4 py-2.5 text-sm text-[#e6edf3] focus:outline-none focus:border-[#00b4d8] transition-colors"
-            >
-              <option value="">Sélectionner une promotion</option>
-              <option value="1ere">1ère année BTS CPI</option>
-              <option value="2eme">2ème année BTS CPI</option>
-            </select>
-          </div>
+          {userData?.role === 'ETUDIANT' && (
+            <div>
+              <label className="text-xs text-[#8b949e] mb-1.5 block">Promotion</label>
+              <select
+                value={form.promotion}
+                onChange={(e) => setForm({ ...form, promotion: e.target.value })}
+                required
+                className="w-full bg-[#0d1117] border border-[#21262d] rounded-lg px-4 py-2.5 text-sm text-[#e6edf3] focus:outline-none focus:border-[#00b4d8] transition-colors"
+              >
+                <option value="">Sélectionner une promotion</option>
+                <option value="1ere">1ère année BTS CPI</option>
+                <option value="2eme">2ème année BTS CPI</option>
+              </select>
+            </div>
+          )}
 
-          {/* Boutons */}
           <div className="flex gap-3 mt-2">
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || success}
               className="flex-1 bg-[#00b4d8] text-[#0d1117] font-medium text-sm py-2.5 rounded-lg hover:bg-[#0099bb] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
@@ -191,18 +170,18 @@ export default function ProfilPage() {
                   <span className="w-4 h-4 border-2 border-[#0d1117] border-t-transparent rounded-full animate-spin" />
                   Sauvegarde...
                 </span>
-              ) : (
-                "Sauvegarder"
-              )}
+              ) : "Sauvegarder"}
             </button>
             <button
               type="button"
               onClick={() => router.push("/dashboard")}
-              className="flex-1 border border-[#21262d] text-[#8b949e] text-sm py-2.5 rounded-lg hover:border-[#8b949e] hover:text-[#e6edf3] transition-colors"
+              disabled={saving}
+              className="flex-1 border border-[#21262d] text-[#8b949e] text-sm py-2.5 rounded-lg hover:border-[#8b949e] hover:text-[#e6edf3] transition-colors disabled:opacity-50"
             >
               Annuler
             </button>
           </div>
+
         </form>
       </div>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -14,80 +14,64 @@ export default function UtilisateursPage() {
   const [chargement, setChargement] = useState(true);
   const [filtre, setFiltre] = useState('TOUS');
 
-  // Protection — admin uniquement
   useEffect(() => {
     if (!loading && userData?.role !== 'ADMIN') {
       router.push('/dashboard');
     }
   }, [userData, loading, router]);
 
-  // Récupérer tous les utilisateurs
+  // Écoute en temps réel avec onSnapshot
   useEffect(() => {
-    const fetchUtilisateurs = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'users'));
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setUtilisateurs(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setChargement(false);
-      }
-    };
-    if (userData?.role === 'ADMIN') fetchUtilisateurs();
+    if (userData?.role !== 'ADMIN') return;
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setUtilisateurs(data);
+      setChargement(false);
+    });
+    return () => unsubscribe();
   }, [userData]);
 
-  // Changer le rôle
   const changerRole = async (uid, nouveauRole) => {
     try {
       await updateDoc(doc(db, 'users', uid), { role: nouveauRole });
-      setUtilisateurs(utilisateurs.map(u =>
-        u.id === uid ? { ...u, role: nouveauRole } : u
-      ));
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Changer le statut
   const changerStatut = async (uid, nouveauStatut) => {
     try {
       await updateDoc(doc(db, 'users', uid), { statut: nouveauStatut });
-      setUtilisateurs(utilisateurs.map(u =>
-        u.id === uid ? { ...u, statut: nouveauStatut } : u
-      ));
     } catch (err) {
       console.error(err);
     }
   };
 
-  // Supprimer un utilisateur
-const supprimerUtilisateur = async (uid) => {
-  if (!confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return;
-  try {
-    const res = await fetch('/api/admin/supprimer-utilisateur', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uid }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.error || 'Erreur serveur');
+  const supprimerUtilisateur = async (uid) => {
+    if (!confirm('Supprimer cet utilisateur ? Cette action est irréversible.')) return;
+    try {
+      const res = await fetch('/api/admin/supprimer-utilisateur', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur serveur');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de la suppression : ' + err.message);
     }
+  };
 
-    setUtilisateurs(utilisateurs.filter(u => u.id !== uid));
-  } catch (err) {
-    console.error(err);
-    alert('Erreur lors de la suppression : ' + err.message);
-  }
-};
-
-  // Filtrage
   const utilisateursFiltres = utilisateurs.filter(u => {
     if (filtre === 'TOUS') return true;
+    if (filtre === 'EN_LIGNE') return u.isOnline === true;
     return u.role === filtre;
   });
+
+  const nbEnLigne = utilisateurs.filter(u => u.isOnline === true).length;
 
   if (loading || chargement) {
     return (
@@ -111,13 +95,20 @@ const supprimerUtilisateur = async (uid) => {
         <h1 className="text-2xl font-medium text-[#e6edf3] mb-2">
           Gestion des utilisateurs
         </h1>
-        <p className="text-[#8b949e] text-sm mb-8">
-          {utilisateurs.length} utilisateur{utilisateurs.length > 1 ? 's' : ''} au total
-        </p>
+        <div className="flex items-center gap-4 mb-8">
+          <p className="text-[#8b949e] text-sm">
+            {utilisateurs.length} utilisateur{utilisateurs.length > 1 ? 's' : ''} au total
+          </p>
+          {/* Indicateur en ligne */}
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
+            <span className="text-xs text-green-400">{nbEnLigne} en ligne</span>
+          </div>
+        </div>
 
         {/* Filtres */}
         <div className="flex gap-2 mb-6 flex-wrap">
-          {['TOUS', 'ETUDIANT', 'PROF', 'ADMIN'].map((f) => (
+          {['TOUS', 'EN_LIGNE', 'ETUDIANT', 'PROF', 'ADMIN'].map((f) => (
             <button
               key={f}
               onClick={() => setFiltre(f)}
@@ -128,10 +119,13 @@ const supprimerUtilisateur = async (uid) => {
               }`}
             >
               {f === 'TOUS' ? '👥 Tous' :
+               f === 'EN_LIGNE' ? '🟢 En ligne' :
                f === 'ETUDIANT' ? '🎓 Étudiants' :
                f === 'PROF' ? '👨‍🏫 Professeurs' : '⚙️ Admins'}
               {' '}
-              ({utilisateurs.filter(u => f === 'TOUS' ? true : u.role === f).length})
+              ({f === 'EN_LIGNE'
+                ? nbEnLigne
+                : utilisateurs.filter(u => f === 'TOUS' ? true : u.role === f).length})
             </button>
           ))}
         </div>
@@ -145,26 +139,33 @@ const supprimerUtilisateur = async (uid) => {
             >
               {/* Infos */}
               <div className="flex items-center gap-4">
-                {u.photo ? (
-                  <Image
-                    src={u.photo}
-                    alt={u.nom || 'Avatar'}
-                    width={40}
-                    height={40}
-                    className="rounded-full border border-[#21262d]"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
-                    {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
-                  </div>
-                )}
+                {/* Avatar avec indicateur en ligne */}
+                <div className="relative">
+                  {u.photo ? (
+                    <Image
+                      src={u.photo}
+                      alt={u.nom || 'Avatar'}
+                      width={40}
+                      height={40}
+                      className="rounded-full border border-[#21262d]"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
+                      {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
+                    </div>
+                  )}
+                  {/* Point vert si en ligne */}
+                  <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#161b22] ${
+                    u.isOnline ? 'bg-green-400' : 'bg-[#8b949e]'
+                  }`}/>
+                </div>
+
                 <div>
                   <p className="text-sm font-medium text-[#e6edf3]">
                     {u.prenom} {u.nom}
                   </p>
                   <p className="text-xs text-[#8b949e]">{u.email}</p>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    {/* Statut */}
                     <span className={`text-xs px-2 py-0.5 rounded ${
                       u.statut === 'actif'
                         ? 'bg-green-500/10 text-green-400'
@@ -175,10 +176,15 @@ const supprimerUtilisateur = async (uid) => {
                       {u.statut === 'actif' ? '✅ Actif' :
                        u.statut === 'en_attente' ? '⏳ En attente' : '❌ Expiré'}
                     </span>
-                    {/* Promotion */}
                     {u.promotion && (
                       <span className="text-xs bg-[#21262d] text-[#8b949e] px-2 py-0.5 rounded">
                         {u.promotion === '1ere' ? '1ère année' : '2ème année'}
+                      </span>
+                    )}
+                    {/* Dernière connexion */}
+                    {!u.isOnline && u.lastSeen && (
+                      <span className="text-xs text-[#8b949e]">
+                        Vu {u.lastSeen?.toDate?.()?.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
                       </span>
                     )}
                   </div>
@@ -187,8 +193,6 @@ const supprimerUtilisateur = async (uid) => {
 
               {/* Actions */}
               <div className="flex items-center gap-2 flex-wrap">
-
-                {/* Changer rôle */}
                 <select
                   value={u.role}
                   onChange={(e) => changerRole(u.id, e.target.value)}
@@ -199,7 +203,6 @@ const supprimerUtilisateur = async (uid) => {
                   <option value="ADMIN">⚙️ Admin</option>
                 </select>
 
-                {/* Activer / Désactiver */}
                 {u.statut === 'actif' ? (
                   <button
                     onClick={() => changerStatut(u.id, 'expiré')}
@@ -216,14 +219,12 @@ const supprimerUtilisateur = async (uid) => {
                   </button>
                 )}
 
-                {/* Supprimer */}
                 <button
                   onClick={() => supprimerUtilisateur(u.id)}
                   className="text-xs bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/20 transition-colors"
                 >
                   🗑️
                 </button>
-
               </div>
             </div>
           ))}

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { collection, getDocs, orderBy, query, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/AuthContext";
 
 const tagColors = {
   'Actualité': 'text-[#00b4d8] bg-[#00b4d8]/10',
@@ -15,13 +16,13 @@ const tagColors = {
 };
 
 export default function HomePage() {
+  const { user } = useAuth();
   const [actualites, setActualites] = useState([]);
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
     const fetchActualites = async () => {
       try {
-        // Limite à 3 actualités sur l'accueil
         const q = query(
           collection(db, 'actualites'),
           orderBy('dateCreation', 'desc'),
@@ -63,12 +64,21 @@ export default function HomePage() {
             professeurs du lycée Robert Doisneau.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/login"
-              className="bg-[#00b4d8] text-[#0d1117] font-medium text-sm px-6 py-3 rounded-lg hover:bg-[#0099bb] transition-colors text-center"
-            >
-              Accéder à mon espace
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="bg-[#00b4d8] text-[#0d1117] font-medium text-sm px-6 py-3 rounded-lg hover:bg-[#0099bb] transition-colors text-center"
+              >
+                Mon Dashboard →
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="bg-[#00b4d8] text-[#0d1117] font-medium text-sm px-6 py-3 rounded-lg hover:bg-[#0099bb] transition-colors text-center"
+              >
+                Accéder à mon espace
+              </Link>
+            )}
             <Link
               href="/programme"
               className="border border-[#30363d] text-[#e6edf3] text-sm px-6 py-3 rounded-lg hover:border-[#8b949e] transition-colors text-center"
@@ -96,7 +106,6 @@ export default function HomePage() {
       {/* ACTUALITES */}
       <section className="max-w-6xl mx-auto px-6 md:px-10 py-12 md:py-14">
 
-        {/* Header section */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="text-xs text-[#00b4d8] uppercase tracking-widest mb-2">Actualités</p>
@@ -115,7 +124,6 @@ export default function HomePage() {
           </Link>
         </div>
 
-        {/* Chargement */}
         {chargement ? (
           <div className="flex justify-center py-12">
             <div className="w-8 h-8 border-2 border-[#00b4d8] border-t-transparent rounded-full animate-spin"/>
@@ -132,7 +140,6 @@ export default function HomePage() {
                   key={actu.id}
                   className="bg-[#161b22] border border-[#21262d] rounded-xl overflow-hidden hover:border-[#00b4d8]/30 transition-colors"
                 >
-                  {/* Image */}
                   {actu.image ? (
                     <div className="relative h-40 w-full overflow-hidden">
                       <Image
@@ -147,8 +154,6 @@ export default function HomePage() {
                       <span className="text-3xl">📰</span>
                     </div>
                   )}
-
-                  {/* Contenu */}
                   <div className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <span className={`text-xs px-2 py-0.5 rounded ${tagColors[actu.tag] || 'text-[#00b4d8] bg-[#00b4d8]/10'}`}>
@@ -175,7 +180,6 @@ export default function HomePage() {
               ))}
             </div>
 
-            {/* Bouton voir toutes mobile */}
             <div className="flex justify-center mt-8 sm:hidden">
               <Link
                 href="/actualites"
