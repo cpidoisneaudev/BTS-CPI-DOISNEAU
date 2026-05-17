@@ -21,17 +21,22 @@ const cartesProf = [
   { titre: "Ajouter un cours", icon: "➕", href: "/dashboard/cours/ajouter", desc: "Uploader un nouveau fichier" },
   { titre: "Gérer les actualités", icon: "📰", href: "/dashboard/actualite", desc: "Ajouter, modifier, supprimer" },
   { titre: "Liens YouTube", icon: "▶️", href: "/dashboard/youtube", desc: "Gérer les vidéos" },
+  { titre: 'Cahier de texte', icon: '📋', href: '/dashboard/cahier/comportement', desc: 'Saisir mes séances et objectifs' },
 ];
 
 const cartesAdmin = [
-  { titre: "Comptes en attente", icon: "⏳", href: "/admin/validation", desc: "Valider les nouveaux comptes", color: "border-[#e07b39]/30 hover:border-[#e07b39]/60" },
-  { titre: "Gérer les utilisateurs", icon: "👥", href: "/admin/utilisateurs", desc: "Voir et modifier les rôles", color: "border-[#9d95e8]/30 hover:border-[#9d95e8]/60" },
-  { titre: "Gérer les actualités", icon: "📰", href: "/dashboard/actualite", desc: "Ajouter, modifier, supprimer", color: "border-[#00b4d8]/30 hover:border-[#00b4d8]/60" },
-  { titre: "Ajouter un cours", icon: "➕", href: "/dashboard/cours/ajouter", desc: "Uploader un nouveau fichier", color: "border-[#00b4d8]/30 hover:border-[#00b4d8]/60" },
-  { titre: "Comportement mécanique", icon: "⚙️", href: "/dashboard/matiere/comportement", desc: "Voir les cours", color: "border-[#21262d] hover:border-[#00b4d8]/30" },
-  { titre: "Construction mécanique", icon: "📐", href: "/dashboard/matiere/construction", desc: "Voir les cours", color: "border-[#21262d] hover:border-[#00b4d8]/30" },
-  { titre: "Conception mécanique", icon: "🖥️", href: "/dashboard/matiere/conception", desc: "Voir les cours", color: "border-[#21262d] hover:border-[#00b4d8]/30" },
-  { titre: "Industrialisation", icon: "🏭", href: "/dashboard/matiere/industrialisation", desc: "Voir les cours", color: "border-[#21262d] hover:border-[#00b4d8]/30" },
+  { titre: 'Comptes en attente', icon: '⏳', href: '/admin/validation', desc: 'Valider les nouveaux comptes', color: 'border-[#e07b39]/30 hover:border-[#e07b39]/60' },
+  { titre: 'Gérer les utilisateurs', icon: '👥', href: '/admin/utilisateurs', desc: 'Voir et modifier les rôles', color: 'border-[#9d95e8]/30 hover:border-[#9d95e8]/60' },
+  { titre: 'Gérer les actualités', icon: '📰', href: '/dashboard/actualite', desc: 'Ajouter, modifier, supprimer', color: 'border-[#00b4d8]/30 hover:border-[#00b4d8]/60' },
+  { titre: 'Ajouter un cours', icon: '➕', href: '/dashboard/cours/ajouter', desc: 'Uploader un nouveau fichier', color: 'border-[#00b4d8]/30 hover:border-[#00b4d8]/60' },
+
+  // 👇 AJOUTE CETTE CARTE ICI
+  { titre: 'Référentiel BTS CPI', icon: '📋', href: '/admin/referentiel', desc: 'Conformité cahier de texte vs référentiel', color: 'border-[#1d9e75]/30 hover:border-[#1d9e75]/60' },
+
+  { titre: 'Comportement mécanique', icon: '⚙️', href: '/dashboard/matiere/comportement', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
+  { titre: 'Construction mécanique', icon: '📐', href: '/dashboard/matiere/construction', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
+  { titre: 'Conception mécanique', icon: '🖥️', href: '/dashboard/matiere/conception', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
+  { titre: 'Industrialisation', icon: '🏭', href: '/dashboard/matiere/industrialisation', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
 ];
 
 export default function DashboardPage() {
