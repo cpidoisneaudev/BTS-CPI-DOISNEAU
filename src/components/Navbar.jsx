@@ -32,12 +32,24 @@ export default function Navbar() {
     return () => unsubscribe();
   }, [userData]);
 
+  // Liens non connecté
   const publicLinks = [
     { href: '/', label: 'Accueil' },
-    { href: '/programme', label: 'Programme' },
+    { href: '/formation', label: 'Formation' },
+    { href: '/epreuves', label: 'Épreuves' },
+    { href: '/stages', label: 'Stage' },
+    { href: '/projet', label: 'Projet' },
+    { href: '/contact', label: 'Contact' },
+  ];
+
+  // Liens connecté
+  const privateLinks = [
+    { href: '/', label: 'Accueil' },
+    { href: '/ressources', label: 'Ressources' },
     { href: '/equipe', label: 'Équipe' },
     { href: '/logiciels', label: 'Logiciels' },
-    { href: '/stages', label: 'Stages' },
+    { href: '/stages', label: 'Stage' },
+    { href: '/projet', label: 'Projet' },
     { href: '/contact', label: 'Contact' },
   ];
 
@@ -46,7 +58,6 @@ export default function Navbar() {
     router.push('/');
   };
 
-  // Avatar — photo Google ou initiales
   const Avatar = ({ size = 32 }) => {
     if (user?.photoURL) {
       return (
@@ -69,8 +80,8 @@ export default function Navbar() {
     );
   };
 
-  // Prénom depuis Firestore ou Firebase Auth
   const prenom = userData?.prenom || user?.displayName?.split(' ')[0] || '';
+  const links = mounted && user ? privateLinks : publicLinks;
 
   return (
     <nav className="bg-[#0d1117] border-b border-[#21262d] sticky top-0 z-50" suppressHydrationWarning>
@@ -91,7 +102,7 @@ export default function Navbar() {
 
         {/* Liens desktop */}
         <div className="hidden lg:flex items-center gap-7">
-          {publicLinks.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -122,7 +133,6 @@ export default function Navbar() {
           {/* Si connecté */}
           {mounted && user ? (
             <div className="flex items-center gap-4">
-
               <Link
                 href="/dashboard"
                 className={`text-sm transition-colors ${
@@ -158,7 +168,6 @@ export default function Navbar() {
                   Se déconnecter
                 </button>
               </div>
-
             </div>
           ) : (
             <Link
@@ -196,7 +205,7 @@ export default function Navbar() {
       {/* Menu mobile */}
       {isOpen && (
         <div className="lg:hidden border-t border-[#21262d] bg-[#0d1117] px-6 py-4 flex flex-col gap-4">
-          {publicLinks.map((link) => (
+          {links.map((link) => (
             <Link
               key={link.href}
               href={link.href}
