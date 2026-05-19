@@ -9,11 +9,13 @@ import { useSearchParams } from "next/navigation";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+
 const cartesEtudiant = [
   { titre: "Comportement mécanique", icon: "⚙️", href: "/dashboard/matiere/comportement", desc: "Cours, TD, TP et examens" },
   { titre: "Construction mécanique", icon: "📐", href: "/dashboard/matiere/construction", desc: "Cours, TD, TP et examens" },
   { titre: "Conception mécanique", icon: "🖥️", href: "/dashboard/matiere/conception", desc: "Cours, TD, TP et examens" },
   { titre: "Industrialisation", icon: "🏭", href: "/dashboard/matiere/industrialisation", desc: "Cours, TD, TP et examens" },
+  { titre: "Toutes les ressources", icon: "📚", href: "/dashboard/ressources", desc: "Cours, TD, TP, examens par matière" },
 ];
 
 const cartesProf = [
@@ -22,6 +24,7 @@ const cartesProf = [
   { titre: "Gérer les actualités", icon: "📰", href: "/dashboard/actualite", desc: "Ajouter, modifier, supprimer" },
   { titre: "Liens YouTube", icon: "▶️", href: "/dashboard/youtube", desc: "Gérer les vidéos" },
   { titre: 'Cahier de texte', icon: '📋', href: '/dashboard/cahier/comportement', desc: 'Saisir mes séances et objectifs' },
+  { titre: "Toutes les ressources", icon: "📚", href: "/dashboard/ressources", desc: "Voir toutes les ressources publiées" },
 ];
 
 const cartesAdmin = [
@@ -29,10 +32,8 @@ const cartesAdmin = [
   { titre: 'Gérer les utilisateurs', icon: '👥', href: '/admin/utilisateurs', desc: 'Voir et modifier les rôles', color: 'border-[#9d95e8]/30 hover:border-[#9d95e8]/60' },
   { titre: 'Gérer les actualités', icon: '📰', href: '/dashboard/actualite', desc: 'Ajouter, modifier, supprimer', color: 'border-[#00b4d8]/30 hover:border-[#00b4d8]/60' },
   { titre: 'Ajouter un cours', icon: '➕', href: '/dashboard/cours/ajouter', desc: 'Uploader un nouveau fichier', color: 'border-[#00b4d8]/30 hover:border-[#00b4d8]/60' },
-
-  // 👇 AJOUTE CETTE CARTE ICI
   { titre: 'Référentiel BTS CPI', icon: '📋', href: '/admin/referentiel', desc: 'Conformité cahier de texte vs référentiel', color: 'border-[#1d9e75]/30 hover:border-[#1d9e75]/60' },
-
+  { titre: 'Cahiers de texte', icon: '📓', href: '/admin/cahiers', desc: 'Voir les séances de tous les profs', color: 'border-[#f0a500]/30 hover:border-[#f0a500]/60' },
   { titre: 'Comportement mécanique', icon: '⚙️', href: '/dashboard/matiere/comportement', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
   { titre: 'Construction mécanique', icon: '📐', href: '/dashboard/matiere/construction', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
   { titre: 'Conception mécanique', icon: '🖥️', href: '/dashboard/matiere/conception', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
@@ -50,7 +51,6 @@ export default function DashboardPage() {
     if (!loading && !user) router.push("/login");
   }, [user, loading, router]);
 
-  // Écoute en temps réel des utilisateurs en ligne — admin uniquement
   useEffect(() => {
     if (userData?.role !== "ADMIN") return;
     const q = query(collection(db, "users"), where("isOnline", "==", true));
@@ -121,6 +121,7 @@ export default function DashboardPage() {
     );
   }
 
+  const photo = userData?.photoUrl || user?.photoURL || null;
   const prenom = userData?.prenom || user?.displayName?.split(" ")[0] || "";
   const cartes = userData?.role === "ADMIN" ? cartesAdmin : userData?.role === "PROF" ? cartesProf : cartesEtudiant;
   const titreRole = userData?.role === "ADMIN" ? "Tableau de bord Admin" : userData?.role === "PROF" ? "Tableau de bord Professeur" : "Tableau de bord Étudiant";
@@ -132,8 +133,9 @@ export default function DashboardPage() {
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          {user?.photoURL ? (
-            <Image src={user.photoURL} alt={user.displayName || "Avatar"} width={48} height={48} className="rounded-full border border-[#21262d]" />
+          {photo ? (
+            <Image src={photo} alt={user.displayName || "Avatar"} width={48} height={48}
+              className="rounded-full border border-[#21262d]" style={{ objectFit: 'cover' }} />
           ) : (
             <div className="w-12 h-12 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
               {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
@@ -158,8 +160,9 @@ export default function DashboardPage() {
         {user && (
           <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-6 mb-8 flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-5">
-              {user?.photoURL ? (
-                <Image src={user.photoURL} alt="Avatar" width={56} height={56} className="rounded-full border-2 border-[#00b4d8]" />
+              {photo ? (
+                <Image src={photo} alt="Avatar" width={56} height={56}
+                  className="rounded-full border-2 border-[#00b4d8]" style={{ objectFit: 'cover' }} />
               ) : (
                 <div className="w-14 h-14 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-lg">
                   {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
@@ -192,9 +195,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
-                <h2 className="text-sm font-medium text-[#e6edf3]">
-                  Utilisateurs en ligne
-                </h2>
+                <h2 className="text-sm font-medium text-[#e6edf3]">Utilisateurs en ligne</h2>
                 <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 px-2 py-0.5 rounded">
                   {usersEnLigne.length} connecté{usersEnLigne.length > 1 ? 's' : ''}
                 </span>
@@ -203,7 +204,6 @@ export default function DashboardPage() {
                 Voir tous →
               </Link>
             </div>
-
             {usersEnLigne.length === 0 ? (
               <p className="text-xs text-[#8b949e]">Aucun utilisateur connecté.</p>
             ) : (

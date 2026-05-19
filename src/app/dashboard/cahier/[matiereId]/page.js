@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 import {
   collection, doc, getDocs, addDoc, updateDoc,
-  deleteDoc, orderBy, query, serverTimestamp
+  deleteDoc, orderBy, query, where, serverTimestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
@@ -57,7 +57,7 @@ export default function CahierPage() {
   const [loadingData, setLoadingData] = useState(true);
 
   const loadData = useCallback(async () => {
-    if (!matiereId) return;
+    if (!matiereId || !user) return;
     setLoadingData(true);
     try {
       const seqSnap = await getDocs(
@@ -75,9 +75,11 @@ export default function CahierPage() {
       }));
       setItems(itemsMap);
 
+      // ✅ FIX : on filtre par profId pour que chaque prof ne voit QUE ses séances
       const seancesSnap = await getDocs(
         query(
           collection(db, 'cahierTexte', matiereId, 'seances'),
+          where('profId', '==', user.uid),
           orderBy('date', 'desc')
         )
       );
@@ -87,7 +89,7 @@ export default function CahierPage() {
     } finally {
       setLoadingData(false);
     }
-  }, [matiereId]);
+  }, [matiereId, user]);
 
   useEffect(() => {
     if (!loading && !user) router.push('/login');

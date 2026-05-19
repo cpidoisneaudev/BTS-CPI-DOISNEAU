@@ -12,6 +12,8 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  // ✅ Nouveau state pour afficher un message clair à l'utilisateur en attente
+  const [statutBloque, setStatutBloque] = useState(null); // "en_attente" | "expiré" | null
 
   const setOnline = async (uid) => {
     try {
@@ -43,7 +45,6 @@ export function AuthProvider({ children }) {
     window.location.href = "/login";
   };
 
-  // Gérer beforeunload séparément
   useEffect(() => {
     if (!user) return;
     const handleOffline = () => setOffline(user.uid);
@@ -62,16 +63,34 @@ export function AuthProvider({ children }) {
           const userSnap = await getDoc(userRef);
 
           if (!userSnap.exists()) {
+            // Profil Firestore pas encore créé (entre étape 1 et 2 de l'inscription)
             setUser(firebaseUser);
             setUserData(null);
           } else {
             const data = userSnap.data();
+
+            // ✅ Compte expiré → déconnexion immédiate
             if (data.statut === "expiré") {
               await clearSession();
               return;
             }
+
+            // ✅ Compte en attente de validation admin → on stocke le user
+            // mais on NE met PAS le cookie session → le middleware bloquera /dashboard
+            if (data.statut === "en_attente") {
+              setUser(firebaseUser);
+              setUserData(data);
+              setStatutBloque("en_attente");
+              // Pas de cookie session → accès /dashboard refusé par le middleware
+              document.cookie = "session=; path=/; max-age=0";
+              setLoading(false);
+              return;
+            }
+
+            // ✅ Compte actif (statut === "actif") → accès normal
             setUser(firebaseUser);
             setUserData(data);
+            setStatutBloque(null);
             const token = await firebaseUser.getIdToken();
             document.cookie = `session=${token}; path=/; max-age=86400; SameSite=Strict`;
             await setOnline(firebaseUser.uid);
@@ -84,6 +103,7 @@ export function AuthProvider({ children }) {
       } else {
         setUser(null);
         setUserData(null);
+        setStatutBloque(null);
         document.cookie = "session=; path=/; max-age=0";
       }
       setLoading(false);
@@ -97,6 +117,7 @@ export function AuthProvider({ children }) {
     if (user) await setOffline(user.uid);
     setUser(null);
     setUserData(null);
+    setStatutBloque(null);
     await signOut(auth);
     document.cookie = "session=; path=/; max-age=0";
     await fetch("/api/auth/logout", { method: "POST" });
@@ -123,8 +144,46 @@ export function AuthProvider({ children }) {
     );
   }
 
+  // ✅ Page d'attente affichée à la place de toute l'app si compte en_attente
+  if (statutBloque === "en_attente") {
+    return (
+      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-6">
+        <div className="w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-[#EF9F27]/10 border border-[#EF9F27]/30 rounded-full flex items-center justify-center mx-auto mb-6">
+            <span className="text-3xl">⏳</span>
+          </div>
+          <h1 className="text-xl font-medium text-[#e6edf3] mb-3">
+            Compte en attente de validation
+          </h1>
+          <p className="text-[#8b949e] text-sm leading-relaxed mb-2">
+            Votre inscription a bien été reçue.
+          </p>
+          <p className="text-[#8b949e] text-sm leading-relaxed mb-6">
+            L&apos;administrateur doit valider votre compte avant que vous puissiez accéder à la plateforme.
+            Vous recevrez un email dès que votre accès est activé.
+          </p>
+          <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-4 mb-6 text-left">
+            <p className="text-xs text-[#8b949e]">Compte connecté</p>
+            <p className="text-sm text-[#00b4d8] font-medium mt-1">{user?.email}</p>
+            {userData?.role && (
+              <p className="text-xs text-[#8b949e] mt-2">
+                Rôle demandé : <span className="text-[#e6edf3]">{userData.role}</span>
+              </p>
+            )}
+          </div>
+          <button
+            onClick={logout}
+            className="w-full border border-[#21262d] text-[#8b949e] text-sm py-3 rounded-lg hover:border-[#30363d] hover:text-[#e6edf3] transition-colors"
+          >
+            Se déconnecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, userData, loading, logout }}>
+    <AuthContext.Provider value={{ user, userData, loading, logout, statutBloque }}>
       {children}
     </AuthContext.Provider>
   );

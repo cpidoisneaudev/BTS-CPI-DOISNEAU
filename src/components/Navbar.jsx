@@ -45,7 +45,7 @@ export default function Navbar() {
   // Liens connecté
   const privateLinks = [
     { href: '/', label: 'Accueil' },
-    { href: '/ressources', label: 'Ressources' },
+    { href: '/dashboard/ressources', label: 'Ressources' },
     { href: '/equipe', label: 'Équipe' },
     { href: '/logiciels', label: 'Logiciels' },
     { href: '/stages', label: 'Stage' },
@@ -58,27 +58,21 @@ export default function Navbar() {
     router.push('/');
   };
 
-  const Avatar = ({ size = 32 }) => {
-    if (user?.photoURL) {
-      return (
-        <Image
-          src={user.photoURL}
-          alt={user.displayName || 'Avatar'}
-          width={size}
-          height={size}
-          className="rounded-full border border-[#21262d]"
-        />
-      );
-    }
+const Avatar = ({ size = 32 }) => {
+  const photo = userData?.photoUrl || user?.photoURL;
+  if (photo) {
     return (
-      <div
-        style={{ width: size, height: size }}
-        className="rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xs"
-      >
-        {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
-      </div>
+      <Image src={photo} alt={user.displayName || 'Avatar'} width={size} height={size}
+        className="rounded-full border border-[#21262d]" style={{objectFit:'cover'}} />
     );
-  };
+  }
+  return (
+    <div style={{ width: size, height: size }}
+      className="rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xs">
+      {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
+    </div>
+  );
+};
 
   const prenom = userData?.prenom || user?.displayName?.split(' ')[0] || '';
   const links = mounted && user ? privateLinks : publicLinks;
