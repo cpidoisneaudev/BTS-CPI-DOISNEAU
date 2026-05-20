@@ -9,7 +9,6 @@ import { useSearchParams } from "next/navigation";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-
 const cartesEtudiant = [
   { titre: "Comportement mécanique", icon: "⚙️", href: "/dashboard/matiere/comportement", desc: "Cours, TD, TP et examens" },
   { titre: "Construction mécanique", icon: "📐", href: "/dashboard/matiere/construction", desc: "Cours, TD, TP et examens" },
@@ -22,8 +21,8 @@ const cartesProf = [
   { titre: "Mes cours", icon: "📚", href: "/dashboard/cours", desc: "Gérer mes cours et ressources" },
   { titre: "Ajouter un cours", icon: "➕", href: "/dashboard/cours/ajouter", desc: "Uploader un nouveau fichier" },
   { titre: "Gérer les actualités", icon: "📰", href: "/dashboard/actualite", desc: "Ajouter, modifier, supprimer" },
-  { titre: "Liens YouTube", icon: "▶️", href: "/dashboard/youtube", desc: "Gérer les vidéos" },
-  { titre: 'Cahier de texte', icon: '📋', href: '/dashboard/cahier/comportement', desc: 'Saisir mes séances et objectifs' },
+  { titre: "Formations & Logiciels", icon: "🎓", href: "/logiciels", desc: "Gérer ateliers et tutoriels SolidWorks, CATIA, RDM6" },
+  { titre: "Cahier de texte", icon: "📋", href: "/dashboard/cahier/comportement", desc: "Saisir mes séances et objectifs" },
   { titre: "Toutes les ressources", icon: "📚", href: "/dashboard/ressources", desc: "Voir toutes les ressources publiées" },
 ];
 
@@ -34,6 +33,7 @@ const cartesAdmin = [
   { titre: 'Ajouter un cours', icon: '➕', href: '/dashboard/cours/ajouter', desc: 'Uploader un nouveau fichier', color: 'border-[#00b4d8]/30 hover:border-[#00b4d8]/60' },
   { titre: 'Référentiel BTS CPI', icon: '📋', href: '/admin/referentiel', desc: 'Conformité cahier de texte vs référentiel', color: 'border-[#1d9e75]/30 hover:border-[#1d9e75]/60' },
   { titre: 'Cahiers de texte', icon: '📓', href: '/admin/cahiers', desc: 'Voir les séances de tous les profs', color: 'border-[#f0a500]/30 hover:border-[#f0a500]/60' },
+  { titre: 'Formations & Logiciels', icon: '🎓', href: '/logiciels', desc: 'Gérer ateliers et tutoriels', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
   { titre: 'Comportement mécanique', icon: '⚙️', href: '/dashboard/matiere/comportement', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
   { titre: 'Construction mécanique', icon: '📐', href: '/dashboard/matiere/construction', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
   { titre: 'Conception mécanique', icon: '🖥️', href: '/dashboard/matiere/conception', desc: 'Voir les cours', color: 'border-[#21262d] hover:border-[#00b4d8]/30' },
@@ -55,8 +55,7 @@ export default function DashboardPage() {
     if (userData?.role !== "ADMIN") return;
     const q = query(collection(db, "users"), where("isOnline", "==", true));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setUsersEnLigne(data);
+      setUsersEnLigne(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     });
     return () => unsubscribe();
   }, [userData]);
@@ -106,7 +105,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex flex-col gap-3">
-            <Link href="/contact" className="w-full bg-[#00b4d8] text-[#0d1117] font-medium text-sm py-2.5 rounded-lg hover:bg-[#0099bb] transition-colors">
+            <Link href="/contact" className="w-full bg-[#00b4d8] text-[#0d1117] font-medium text-sm py-2.5 rounded-lg hover:bg-[#0099bb] transition-colors text-center">
               Contacter l&apos;administration
             </Link>
             <button

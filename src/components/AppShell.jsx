@@ -30,7 +30,7 @@ export default function AppShell({ children }) {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
       {/* Navbar full width fixe en haut */}
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
@@ -40,9 +40,9 @@ export default function AppShell({ children }) {
       <div style={{
         display: "flex",
         flex: 1,
-        marginTop: 65, // hauteur navbar
+        marginTop: 65,
       }}>
-        {/* Sidebar fixe qui commence sous la navbar */}
+        {/* Sidebar fixe */}
         <div style={{
           position: "fixed",
           top: 65,
@@ -55,16 +55,20 @@ export default function AppShell({ children }) {
           <LogicielsSidebar />
         </div>
 
-        {/* Contenu principal décalé */}
+        {/* ✅ FIX : width calculée explicitement, overflow caché, min-width: 0 */}
         <div style={{
           marginLeft: width,
           flex: 1,
+          minWidth: 0,                    // ← empêche le flex item de déborder
+          width: `calc(100vw - ${width})`, // ← largeur explicite = viewport - sidebar
+          maxWidth: `calc(100vw - ${width})`, // ← plafond strict
+          overflowX: "hidden",            // ← coupe tout ce qui dépasse
           minHeight: "calc(100vh - 65px)",
-          transition: "margin-left 0.22s ease",
+          transition: "margin-left 0.22s ease, width 0.22s ease, max-width 0.22s ease",
           display: "flex",
           flexDirection: "column",
         }}>
-          <main style={{ flex: 1 }}>{children}</main>
+          <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
           <Footer />
         </div>
       </div>
