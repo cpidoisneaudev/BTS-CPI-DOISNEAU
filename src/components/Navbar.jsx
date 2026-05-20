@@ -32,26 +32,24 @@ export default function Navbar() {
     return () => unsubscribe();
   }, [userData]);
 
-  // Liens non connecté
-  const publicLinks = [
-    { href: '/', label: 'Accueil' },
-    { href: '/formation', label: 'Formation' },
-    { href: '/epreuves', label: 'Épreuves' },
-    { href: '/stages', label: 'Stage' },
-    { href: '/projet', label: 'Projet' },
-    { href: '/contact', label: 'Contact' },
-  ];
+// Liens non connecté
+const publicLinks = [
+  { href: '/', label: 'Accueil' },
+  { href: '/formation', label: 'Formation' },
+  { href: '/epreuves', label: 'Épreuves' },
+  { href: '/stages', label: 'Stage' },
+  { href: '/projet', label: 'Projet' },
+  { href: '/contact', label: 'Contact' },
+];
 
-  // Liens connecté
-  const privateLinks = [
-    { href: '/', label: 'Accueil' },
-    { href: '/dashboard/ressources', label: 'Ressources' },
-    { href: '/equipe', label: 'Équipe' },
-    { href: '/logiciels', label: 'Logiciels' },
-    { href: '/stages', label: 'Stage' },
-    { href: '/projet', label: 'Projet' },
-    { href: '/contact', label: 'Contact' },
-  ];
+// Liens connecté — plus d'Accueil ni Contact
+const privateLinks = [
+  { href: '/dashboard/ressources', label: 'Ressources' },
+  { href: '/equipe', label: 'Équipe' },
+  { href: '/logiciels', label: 'Logiciels' },
+  { href: '/stages', label: 'Stage' },
+  { href: '/projet', label: 'Projet' },
+];
 
   const handleLogout = async () => {
     await logout();

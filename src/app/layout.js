@@ -3,6 +3,8 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AuthProvider } from '@/lib/AuthContext';
+import { SidebarProvider } from '@/lib/SidebarContext';
+import AppShell from '@/components/AppShell';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -16,9 +18,11 @@ export default function RootLayout({ children }) {
     <html lang="fr" suppressHydrationWarning>
       <body className={`${inter.className} bg-[#0d1117] min-h-screen`}>
         <AuthProvider>
-          <Navbar />
-          <main>{children}</main>
-          <Footer />
+          <SidebarProvider>
+            <AppShell>
+              {children}
+            </AppShell>
+          </SidebarProvider>
         </AuthProvider>
       </body>
     </html>
