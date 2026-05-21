@@ -11,8 +11,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [loggingOut, setLoggingOut] = useState(false);
-  // ✅ Nouveau state pour afficher un message clair à l'utilisateur en attente
   const [statutBloque, setStatutBloque] = useState(null); // "en_attente" | "expiré" | null
 
   const setOnline = async (uid) => {
@@ -54,8 +52,6 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (loggingOut) return;
-
       if (firebaseUser) {
         try {
           await firebaseUser.getIdToken(true);
@@ -63,31 +59,25 @@ export function AuthProvider({ children }) {
           const userSnap = await getDoc(userRef);
 
           if (!userSnap.exists()) {
-            // Profil Firestore pas encore créé (entre étape 1 et 2 de l'inscription)
             setUser(firebaseUser);
             setUserData(null);
           } else {
             const data = userSnap.data();
 
-            // ✅ Compte expiré → déconnexion immédiate
             if (data.statut === "expiré") {
               await clearSession();
               return;
             }
 
-            // ✅ Compte en attente de validation admin → on stocke le user
-            // mais on NE met PAS le cookie session → le middleware bloquera /dashboard
             if (data.statut === "en_attente") {
               setUser(firebaseUser);
               setUserData(data);
               setStatutBloque("en_attente");
-              // Pas de cookie session → accès /dashboard refusé par le middleware
               document.cookie = "session=; path=/; max-age=0";
               setLoading(false);
               return;
             }
 
-            // ✅ Compte actif (statut === "actif") → accès normal
             setUser(firebaseUser);
             setUserData(data);
             setStatutBloque(null);
@@ -110,21 +100,33 @@ export function AuthProvider({ children }) {
     });
 
     return () => unsubscribe();
-  }, [loggingOut]);
+  }, []);
 
   const logout = async () => {
-    setLoggingOut(true);
-    if (user) await setOffline(user.uid);
+    try {
+      if (user) await setOffline(user.uid);
+    } catch (err) {
+      console.error("Erreur setOffline", err);
+    }
+
+    // Nettoyage immédiat du state
     setUser(null);
     setUserData(null);
     setStatutBloque(null);
-    await signOut(auth);
     document.cookie = "session=; path=/; max-age=0";
-    await fetch("/api/auth/logout", { method: "POST" });
+
+    try {
+      await signOut(auth);
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (err) {
+      console.error("Erreur logout", err);
+    }
+
+    // Redirection vers l'accueil
     window.location.href = "/";
   };
 
-  if (loading || loggingOut) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0d1117] flex items-center justify-center">
         <div className="flex flex-col items-center gap-6">
@@ -144,7 +146,6 @@ export function AuthProvider({ children }) {
     );
   }
 
-  // ✅ Page d'attente affichée à la place de toute l'app si compte en_attente
   if (statutBloque === "en_attente") {
     return (
       <div className="min-h-screen bg-[#0d1117] flex items-center justify-center px-6">
