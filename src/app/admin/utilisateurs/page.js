@@ -99,7 +99,6 @@ export default function UtilisateursPage() {
           <p className="text-[#8b949e] text-sm">
             {utilisateurs.length} utilisateur{utilisateurs.length > 1 ? 's' : ''} au total
           </p>
-          {/* Indicateur en ligne */}
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
             <span className="text-xs text-green-400">{nbEnLigne} en ligne</span>
@@ -132,102 +131,107 @@ export default function UtilisateursPage() {
 
         {/* Liste */}
         <div className="flex flex-col gap-3">
-          {utilisateursFiltres.map((u) => (
-            <div
-              key={u.id}
-              className="bg-[#161b22] border border-[#21262d] rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap"
-            >
-              {/* Infos */}
-              <div className="flex items-center gap-4">
-                {/* Avatar avec indicateur en ligne */}
-                <div className="relative">
-                  {u.photo ? (
-                    <Image
-                      src={u.photo}
-                      alt={u.nom || 'Avatar'}
-                      width={40}
-                      height={40}
-                      className="rounded-full border border-[#21262d]"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
-                      {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
-                    </div>
-                  )}
-                  {/* Point vert si en ligne */}
-                  <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#161b22] ${
-                    u.isOnline ? 'bg-green-400' : 'bg-[#8b949e]'
-                  }`}/>
-                </div>
+          {utilisateursFiltres.map((u) => {
+            // ✅ FIX : photoUrl en priorité (Cloudinary), puis photoURL (Google), puis rien
+            const avatarSrc = u.photoUrl || u.photoURL || null;
 
-                <div>
-                  <p className="text-sm font-medium text-[#e6edf3]">
-                    {u.prenom} {u.nom}
-                  </p>
-                  <p className="text-xs text-[#8b949e]">{u.email}</p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className={`text-xs px-2 py-0.5 rounded ${
-                      u.statut === 'actif'
-                        ? 'bg-green-500/10 text-green-400'
-                        : u.statut === 'en_attente'
-                        ? 'bg-[#e07b39]/10 text-[#e07b39]'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {u.statut === 'actif' ? '✅ Actif' :
-                       u.statut === 'en_attente' ? '⏳ En attente' : '❌ Expiré'}
-                    </span>
-                    {u.promotion && (
-                      <span className="text-xs bg-[#21262d] text-[#8b949e] px-2 py-0.5 rounded">
-                        {u.promotion === '1ere' ? '1ère année' : '2ème année'}
-                      </span>
+            return (
+              <div
+                key={u.id}
+                className="bg-[#161b22] border border-[#21262d] rounded-xl p-5 flex items-center justify-between gap-4 flex-wrap"
+              >
+                {/* Infos */}
+                <div className="flex items-center gap-4">
+                  {/* Avatar avec indicateur en ligne */}
+                  <div className="relative">
+                    {avatarSrc ? (
+                      <Image
+                        src={avatarSrc}
+                        alt={`${u.prenom} ${u.nom}`}
+                        width={40}
+                        height={40}
+                        className="rounded-full border border-[#21262d] object-cover"
+                        style={{ width: 40, height: 40 }}
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
+                        {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
+                      </div>
                     )}
-                    {/* Dernière connexion */}
-                    {!u.isOnline && u.lastSeen && (
-                      <span className="text-xs text-[#8b949e]">
-                        Vu {u.lastSeen?.toDate?.()?.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                    {/* Point vert si en ligne */}
+                    <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#161b22] ${
+                      u.isOnline ? 'bg-green-400' : 'bg-[#8b949e]'
+                    }`}/>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-[#e6edf3]">
+                      {u.prenom} {u.nom}
+                    </p>
+                    <p className="text-xs text-[#8b949e]">{u.email}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className={`text-xs px-2 py-0.5 rounded ${
+                        u.statut === 'actif'
+                          ? 'bg-green-500/10 text-green-400'
+                          : u.statut === 'en_attente'
+                          ? 'bg-[#e07b39]/10 text-[#e07b39]'
+                          : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {u.statut === 'actif' ? '✅ Actif' :
+                         u.statut === 'en_attente' ? '⏳ En attente' : '❌ Expiré'}
                       </span>
-                    )}
+                      {u.promotion && (
+                        <span className="text-xs bg-[#21262d] text-[#8b949e] px-2 py-0.5 rounded">
+                          {u.promotion === '1ere' ? '1ère année' : '2ème année'}
+                        </span>
+                      )}
+                      {!u.isOnline && u.lastSeen && (
+                        <span className="text-xs text-[#8b949e]">
+                          Vu {u.lastSeen?.toDate?.()?.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <select
-                  value={u.role}
-                  onChange={(e) => changerRole(u.id, e.target.value)}
-                  className="bg-[#0d1117] border border-[#21262d] text-[#e6edf3] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#00b4d8] transition-colors"
-                >
-                  <option value="ETUDIANT">🎓 Étudiant</option>
-                  <option value="PROF">👨‍🏫 Professeur</option>
-                  <option value="ADMIN">⚙️ Admin</option>
-                </select>
-
-                {u.statut === 'actif' ? (
-                  <button
-                    onClick={() => changerStatut(u.id, 'expiré')}
-                    className="text-xs bg-[#e07b39]/10 text-[#e07b39] border border-[#e07b39]/30 px-3 py-2 rounded-lg hover:bg-[#e07b39]/20 transition-colors"
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <select
+                    value={u.role}
+                    onChange={(e) => changerRole(u.id, e.target.value)}
+                    className="bg-[#0d1117] border border-[#21262d] text-[#e6edf3] text-xs rounded-lg px-3 py-2 focus:outline-none focus:border-[#00b4d8] transition-colors"
                   >
-                    Désactiver
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => changerStatut(u.id, 'actif')}
-                    className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 px-3 py-2 rounded-lg hover:bg-green-500/20 transition-colors"
-                  >
-                    Activer
-                  </button>
-                )}
+                    <option value="ETUDIANT">🎓 Étudiant</option>
+                    <option value="PROF">👨‍🏫 Professeur</option>
+                    <option value="ADMIN">⚙️ Admin</option>
+                  </select>
 
-                <button
-                  onClick={() => supprimerUtilisateur(u.id)}
-                  className="text-xs bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/20 transition-colors"
-                >
-                  🗑️
-                </button>
+                  {u.statut === 'actif' ? (
+                    <button
+                      onClick={() => changerStatut(u.id, 'expiré')}
+                      className="text-xs bg-[#e07b39]/10 text-[#e07b39] border border-[#e07b39]/30 px-3 py-2 rounded-lg hover:bg-[#e07b39]/20 transition-colors"
+                    >
+                      Désactiver
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => changerStatut(u.id, 'actif')}
+                      className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 px-3 py-2 rounded-lg hover:bg-green-500/20 transition-colors"
+                    >
+                      Activer
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => supprimerUtilisateur(u.id)}
+                    className="text-xs bg-red-500/10 text-red-400 border border-red-500/30 px-3 py-2 rounded-lg hover:bg-red-500/20 transition-colors"
+                  >
+                    🗑️
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
       </div>

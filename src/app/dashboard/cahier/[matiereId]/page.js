@@ -75,7 +75,6 @@ export default function CahierPage() {
       }));
       setItems(itemsMap);
 
-      // ✅ FIX : on filtre par profId pour que chaque prof ne voit QUE ses séances
       const seancesSnap = await getDocs(
         query(
           collection(db, 'cahierTexte', matiereId, 'seances'),
@@ -351,7 +350,7 @@ export default function CahierPage() {
               </div>
             </div>
 
-            {/* Étape 1 : Date + durée */}
+            {/* Étape 1 */}
             <div className="flex gap-2 items-center mb-1">
               <span className="w-5 h-5 rounded-full bg-[#00b4d8]/15 border border-[#00b4d8] text-[#00b4d8] text-xs flex items-center justify-center flex-shrink-0">1</span>
               <p className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Date et durée *</p>
@@ -372,7 +371,7 @@ export default function CahierPage() {
               </select>
             </div>
 
-            {/* Étape 2 : Séquence */}
+            {/* Étape 2 */}
             <div className="flex gap-2 items-center mb-1">
               <span className="w-5 h-5 rounded-full bg-[#00b4d8]/15 border border-[#00b4d8] text-[#00b4d8] text-xs flex items-center justify-center flex-shrink-0">2</span>
               <p className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">
@@ -393,7 +392,7 @@ export default function CahierPage() {
               </select>
             </div>
 
-            {/* Étape 3 : Type de séance */}
+            {/* Étape 3 */}
             <div className="flex gap-2 items-center mb-1">
               <span className="w-5 h-5 rounded-full bg-[#00b4d8]/15 border border-[#00b4d8] text-[#00b4d8] text-xs flex items-center justify-center flex-shrink-0">3</span>
               <p className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">Type de séance *</p>
@@ -421,7 +420,7 @@ export default function CahierPage() {
               </div>
             </div>
 
-            {/* Étape 4 : Contenu sélectionnable */}
+            {/* Étape 4 */}
             {form.sequenceId && (
               <>
                 <div className="flex gap-2 items-center mb-1">
@@ -501,7 +500,7 @@ export default function CahierPage() {
               </>
             )}
 
-            {/* Étape 5 : Objectif */}
+            {/* Étape 5 */}
             <div className="flex gap-2 items-center mb-1">
               <span className="w-5 h-5 rounded-full bg-[#534AB7]/20 border border-[#534AB7] text-[#AFA9EC] text-xs flex items-center justify-center flex-shrink-0">5</span>
               <p className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">
@@ -527,7 +526,7 @@ export default function CahierPage() {
               </p>
             </div>
 
-            {/* Étape 6 : Ressource */}
+            {/* Étape 6 */}
             <div className="flex gap-2 items-center mb-1">
               <span className="w-5 h-5 rounded-full bg-[#21262d] border border-[#30363d] text-[#8b949e] text-xs flex items-center justify-center flex-shrink-0">6</span>
               <p className="text-xs text-[#8b949e] uppercase tracking-wide font-medium">
@@ -571,7 +570,7 @@ export default function CahierPage() {
               />
             </div>
 
-            {/* Actions */}
+            {/* Actions formulaire */}
             <div className="flex items-center justify-between pt-3 border-t border-[#21262d]">
               <p className="text-xs text-green-400">
                 ✓ Synchronisé automatiquement avec le tableau de bord admin
@@ -595,7 +594,7 @@ export default function CahierPage() {
           </div>
         )}
 
-        {/* Tableau des séances */}
+        {/* Liste des séances */}
         {seances.length === 0 && !showForm ? (
           <div className="border border-dashed border-[#21262d] rounded-xl p-12 text-center">
             <p className="text-[#8b949e] mb-3">Aucune séance enregistrée</p>
@@ -605,6 +604,7 @@ export default function CahierPage() {
           </div>
         ) : (
           <div className="border border-[#21262d] rounded-xl overflow-hidden">
+            {/* Header liste */}
             <div className="bg-[#161b22] px-4 py-3 flex items-center justify-between border-b border-[#21262d]">
               <div className="flex items-center gap-2 text-sm font-medium">
                 <span className="w-2 h-2 rounded-full bg-green-400" />
@@ -616,7 +616,83 @@ export default function CahierPage() {
                 </span>
               )}
             </div>
-            <div className="overflow-x-auto">
+
+            {/* ── MOBILE : cards ── */}
+            <div className="block md:hidden divide-y divide-[#21262d]">
+              {Object.entries(byMonth)
+                .sort(([a], [b]) => b.localeCompare(a))
+                .map(([month, monthSeances]) => (
+                  <div key={month}>
+                    <div className="bg-[#0d1117] px-4 py-2">
+                      <span className="text-[10px] font-medium text-[#8b949e] uppercase tracking-widest">
+                        {formatMonth(month)}
+                      </span>
+                    </div>
+                    {monthSeances.map(seance => {
+                      const tcfg = TYPE_STYLES[seance.type] || TYPE_STYLES.cours;
+                      return (
+                        <div key={seance.id} className="px-4 py-3 bg-[#0d1117] hover:bg-[#161b22] transition-colors">
+                          {/* Ligne 1 : date + durée + type + actions */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-[#8b949e]">{seance.date}</span>
+                              <span className="text-xs text-[#8b949e]">·</span>
+                              <span className="text-xs text-[#00b4d8] font-medium">{seance.duree}</span>
+                              <span className={`inline-flex px-2 py-0.5 rounded border font-medium text-[10px] ${tcfg.bg} ${tcfg.text} ${tcfg.border}`}>
+                                {tcfg.label}
+                              </span>
+                            </div>
+                            <div className="flex gap-1 flex-shrink-0">
+                              <button
+                                onClick={() => handleEdit(seance)}
+                                className="border border-[#21262d] rounded px-2 py-1 text-[#8b949e] hover:border-[#00b4d8] hover:text-[#00b4d8] transition-colors text-xs"
+                              >✏</button>
+                              <button
+                                onClick={() => handleDelete(seance.id)}
+                                className="border border-[#21262d] rounded px-2 py-1 text-[#8b949e] hover:border-red-500 hover:text-red-400 transition-colors text-xs"
+                              >✕</button>
+                            </div>
+                          </div>
+                          {/* Séquence */}
+                          <p className="text-xs font-medium text-[#e6edf3] mb-1">{seance.sequenceName}</p>
+                          {/* Contenu */}
+                          <p className="text-xs text-[#8b949e] leading-relaxed mb-2 line-clamp-2">
+                            {seance.contenuTextes?.join(' / ')}
+                          </p>
+                          {/* Objectif */}
+                          {seance.objectif ? (
+                            <p className="text-xs text-[#AFA9EC] italic leading-relaxed line-clamp-2">
+                              {seance.objectif}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-[#EF9F27]">⚠ Objectif manquant</p>
+                          )}
+                          {/* Ressources */}
+                          {(seance.fichierUrl || seance.lienVideo) && (
+                            <div className="flex gap-3 mt-2">
+                              {seance.fichierUrl && (
+                                <a href={seance.fichierUrl} target="_blank" rel="noreferrer"
+                                  className="text-[10px] text-[#00b4d8] hover:underline flex items-center gap-1">
+                                  📎 {seance.fichierNom?.substring(0, 16) || 'Fichier'}
+                                </a>
+                              )}
+                              {seance.lienVideo && (
+                                <a href={seance.lienVideo} target="_blank" rel="noreferrer"
+                                  className="text-[10px] text-red-400 hover:underline flex items-center gap-1">
+                                  🎬 Vidéo
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+            </div>
+
+            {/* ── DESKTOP : tableau ── */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: '8%' }} />
@@ -671,15 +747,13 @@ export default function CahierPage() {
                               <div className="flex flex-col gap-1">
                                 {seance.fichierUrl && (
                                   <a href={seance.fichierUrl} target="_blank" rel="noreferrer"
-                                    className="text-[#00b4d8] hover:underline flex items-center gap-1"
-                                    style={{ fontSize: '9px' }}>
+                                    className="text-[#00b4d8] hover:underline flex items-center gap-1" style={{ fontSize: '9px' }}>
                                     📎 {seance.fichierNom?.substring(0, 12) || 'Fichier'}
                                   </a>
                                 )}
                                 {seance.lienVideo && (
                                   <a href={seance.lienVideo} target="_blank" rel="noreferrer"
-                                    className="text-red-400 hover:underline flex items-center gap-1"
-                                    style={{ fontSize: '9px' }}>
+                                    className="text-red-400 hover:underline flex items-center gap-1" style={{ fontSize: '9px' }}>
                                     🎬 Vidéo
                                   </a>
                                 )}
@@ -706,6 +780,7 @@ export default function CahierPage() {
                 </tbody>
               </table>
             </div>
+
           </div>
         )}
 

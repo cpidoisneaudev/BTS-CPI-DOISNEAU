@@ -7,6 +7,15 @@ import { auth, db } from "@/lib/firebase";
 
 const AuthContext = createContext({});
 
+// ✅ Vérifie si un compte a plus de 2 ans
+function isCompteExpire(dateCreation) {
+  if (!dateCreation) return false;
+  const creation = dateCreation?.toDate ? dateCreation.toDate() : new Date(dateCreation);
+  const deuxAns = new Date();
+  deuxAns.setFullYear(deuxAns.getFullYear() - 2);
+  return creation < deuxAns;
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
@@ -64,6 +73,18 @@ export function AuthProvider({ children }) {
           } else {
             const data = userSnap.data();
 
+            // ✅ Vérification expiration 2 ans — ADMINS exclus
+            if (data.role !== "ADMIN" && data.statut === "actif" && isCompteExpire(data.dateCreation)) {
+              console.log(`Compte ${firebaseUser.email} expiré après 2 ans — désactivation automatique`);
+              await updateDoc(userRef, {
+                statut: "expiré",
+                lastSeen: serverTimestamp(),
+                isOnline: false,
+              });
+              await clearSession();
+              return;
+            }
+
             if (data.statut === "expiré") {
               await clearSession();
               return;
@@ -109,7 +130,6 @@ export function AuthProvider({ children }) {
       console.error("Erreur setOffline", err);
     }
 
-    // Nettoyage immédiat du state
     setUser(null);
     setUserData(null);
     setStatutBloque(null);
@@ -122,7 +142,6 @@ export function AuthProvider({ children }) {
       console.error("Erreur logout", err);
     }
 
-    // Redirection vers l'accueil
     window.location.href = "/";
   };
 

@@ -128,20 +128,20 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
-      <div className="max-w-6xl mx-auto px-6 md:px-10 py-12">
+      <div className="max-w-6xl mx-auto px-4 md:px-10 py-8 md:py-12">
 
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           {photo ? (
             <Image src={photo} alt={user.displayName || "Avatar"} width={48} height={48}
-              className="rounded-full border border-[#21262d]" style={{ objectFit: 'cover' }} />
+              className="rounded-full border border-[#21262d] flex-shrink-0" style={{ objectFit: 'cover' }} />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm">
+            <div className="w-12 h-12 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-sm flex-shrink-0">
               {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
             </div>
           )}
-          <div>
-            <h1 className="text-2xl font-medium text-[#e6edf3]">
+          <div className="min-w-0">
+            <h1 className="text-xl md:text-2xl font-medium text-[#e6edf3] truncate">
               Bonjour, <span className="text-[#00b4d8]">{prenom}</span> 👋
             </h1>
             <p className="text-[#8b949e] text-sm">{titreRole}</p>
@@ -157,40 +157,56 @@ export default function DashboardPage() {
 
         {/* Carte profil */}
         {user && (
-          <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-6 mb-8 flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-5">
-              {photo ? (
-                <Image src={photo} alt="Avatar" width={56} height={56}
-                  className="rounded-full border-2 border-[#00b4d8]" style={{ objectFit: 'cover' }} />
-              ) : (
-                <div className="w-14 h-14 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-lg">
-                  {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
-                </div>
-              )}
-              <div className="flex flex-col gap-1">
-                <p className="text-base font-medium text-[#e6edf3]">{userData?.prenom} {userData?.nom}</p>
-                <p className="text-sm text-[#8b949e]">{user?.email}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs bg-[#00b4d8]/10 text-[#00b4d8] border border-[#00b4d8]/30 px-2 py-0.5 rounded">
-                    {badgeRole}
-                  </span>
-                  {userData?.role === "ETUDIANT" && userData?.promotion && (
-                    <span className="text-xs bg-[#21262d] text-[#8b949e] px-2 py-0.5 rounded">
-                      {userData.promotion === "1ere" ? "1ère année" : "2ème année"}
-                    </span>
+          <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-4 md:p-6 mb-8">
+            {/* Layout : colonne sur mobile, ligne sur desktop */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                {/* Avatar */}
+                <div className="flex-shrink-0">
+                  {photo ? (
+                    <Image src={photo} alt="Avatar" width={56} height={56}
+                      className="rounded-full border-2 border-[#00b4d8]" style={{ objectFit: 'cover' }} />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-lg">
+                      {userData?.prenom?.charAt(0)}{userData?.nom?.charAt(0)}
+                    </div>
                   )}
                 </div>
+                {/* Infos texte */}
+                <div className="flex flex-col gap-1 min-w-0">
+                  <p className="text-base font-medium text-[#e6edf3] truncate">
+                    {userData?.prenom} {userData?.nom}
+                  </p>
+                  {/* ✅ FIX : email tronqué avec overflow hidden */}
+                  <p className="text-sm text-[#8b949e] truncate max-w-[200px] sm:max-w-none">
+                    {user?.email}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="text-xs bg-[#00b4d8]/10 text-[#00b4d8] border border-[#00b4d8]/30 px-2 py-0.5 rounded whitespace-nowrap">
+                      {badgeRole}
+                    </span>
+                    {userData?.role === "ETUDIANT" && userData?.promotion && (
+                      <span className="text-xs bg-[#21262d] text-[#8b949e] px-2 py-0.5 rounded whitespace-nowrap">
+                        {userData.promotion === "1ere" ? "1ère année" : "2ème année"}
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
+              {/* Bouton modifier */}
+              <Link
+                href="/dashboard/profil"
+                className="text-xs text-[#8b949e] border border-[#21262d] px-4 py-2 rounded-lg hover:border-[#00b4d8] hover:text-[#00b4d8] transition-colors self-start sm:self-auto whitespace-nowrap"
+              >
+                ✏️ Modifier mon profil
+              </Link>
             </div>
-            <Link href="/dashboard/profil" className="text-xs text-[#8b949e] border border-[#21262d] px-4 py-2 rounded-lg hover:border-[#00b4d8] hover:text-[#00b4d8] transition-colors">
-              ✏️ Modifier mon profil
-            </Link>
           </div>
         )}
 
         {/* Utilisateurs en ligne — admin uniquement */}
         {userData?.role === "ADMIN" && (
-          <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-6 mb-8">
+          <div className="bg-[#161b22] border border-[#21262d] rounded-xl p-4 md:p-6 mb-8">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"/>
@@ -210,13 +226,22 @@ export default function DashboardPage() {
                 {usersEnLigne.map((u) => (
                   <div key={u.id} className="flex items-center gap-2 bg-[#0d1117] border border-[#21262d] rounded-lg px-3 py-2">
                     <div className="relative">
-                      <div className="w-7 h-7 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xs">
-                        {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
-                      </div>
+                      {u.photoUrl || u.photoURL ? (
+                        <Image
+                          src={u.photoUrl || u.photoURL}
+                          alt={`${u.prenom} ${u.nom}`}
+                          width={28} height={28}
+                          className="rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-[#00b4d8] flex items-center justify-center text-[#0d1117] font-bold text-xs">
+                          {u.prenom?.charAt(0)}{u.nom?.charAt(0)}
+                        </div>
+                      )}
                       <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-400 border border-[#0d1117]"/>
                     </div>
-                    <div>
-                      <p className="text-xs font-medium text-[#e6edf3]">{u.prenom} {u.nom}</p>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium text-[#e6edf3] truncate max-w-[80px]">{u.prenom} {u.nom}</p>
                       <p className="text-[10px] text-[#8b949e]">
                         {u.role === "ADMIN" ? "⚙️ Admin" : u.role === "PROF" ? "👨‍🏫 Prof" : "🎓 Étudiant"}
                       </p>
