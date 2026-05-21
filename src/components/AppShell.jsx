@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useSidebar } from "@/lib/SidebarContext";
@@ -12,12 +13,26 @@ const ALWAYS_PUBLIC = ["/", "/contact", "/login", "/inscription", "/reset-passwo
 export default function AppShell({ children }) {
   const pathname = usePathname();
   const { user, userData } = useAuth();
-  const { width } = useSidebar();
+  const { width, setCollapsed } = useSidebar();
 
   const isPublic = ALWAYS_PUBLIC.some(r =>
     pathname === r || pathname.startsWith(r + "/")
   );
   const showSidebar = user && userData && !isPublic;
+
+  // ✅ FIX 1 : Ferme la sidebar sur mobile au chargement initial
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  }, []);
+
+  // ✅ FIX 2 : Ferme la sidebar à chaque navigation sur mobile
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setCollapsed(true);
+    }
+  }, [pathname]);
 
   if (!showSidebar) {
     return (
@@ -55,14 +70,14 @@ export default function AppShell({ children }) {
           <LogicielsSidebar />
         </div>
 
-        {/* ✅ FIX : width calculée explicitement, overflow caché, min-width: 0 */}
+        {/* Contenu principal */}
         <div style={{
           marginLeft: width,
           flex: 1,
-          minWidth: 0,                    // ← empêche le flex item de déborder
-          width: `calc(100vw - ${width})`, // ← largeur explicite = viewport - sidebar
-          maxWidth: `calc(100vw - ${width})`, // ← plafond strict
-          overflowX: "hidden",            // ← coupe tout ce qui dépasse
+          minWidth: 0,
+          width: `calc(100vw - ${width})`,
+          maxWidth: `calc(100vw - ${width})`,
+          overflowX: "hidden",
           minHeight: "calc(100vh - 65px)",
           transition: "margin-left 0.22s ease, width 0.22s ease, max-width 0.22s ease",
           display: "flex",
