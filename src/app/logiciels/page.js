@@ -557,7 +557,7 @@ export default function LogicielsPage() {
             borderRadius: 12, overflow: "hidden",
             border: "1px solid #30363d", flexShrink: 0,
           }}>
-            <img src="/moteur.png" alt="Moteur" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src="/moteur.PNG" alt="Moteur" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
         </div>
 
@@ -635,7 +635,7 @@ export default function LogicielsPage() {
               borderRadius: 10, background: "#0d1117",
               border: "1px solid #30363d", overflow: "hidden", flexShrink: 0,
             }}>
-              <img src="/moteur.png" alt="Projet" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src="/moteur.PNG" alt="Projet" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 11, color: "#7d8590", fontWeight: 600, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>PROJET COMPLET</div>
