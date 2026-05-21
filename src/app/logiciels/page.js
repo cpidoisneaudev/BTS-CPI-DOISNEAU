@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getDocs, collection, orderBy, query, addDoc, deleteDoc, doc, serverTimestamp, onSnapshot } from "firebase/firestore";
+import {
+  getDocs, collection, orderBy, query, addDoc, deleteDoc,
+  doc, serverTimestamp, onSnapshot, updateDoc
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -25,6 +28,9 @@ const LOGICIELS_FIXES = [
 ];
 const FIXES_IDS = LOGICIELS_FIXES.map(l => l.id);
 
+const NIVEAUX = ["Débutant", "Intermédiaire", "Avancé"];
+const LIVRABLES_DEFAUT = ["Fichiers CAO", "Mise en plan", "Calculs RDM", "Nomenclature", "Simulation", "Guide fabrication"];
+
 function getYouTubeId(url) {
   if (!url) return null;
   const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
@@ -35,6 +41,405 @@ function badgeStyle(niveau) {
   if (niveau === "Débutant")      return { background: "#1a3a2a", color: "#3fb950" };
   if (niveau === "Intermédiaire") return { background: "#3a2e1a", color: "#d29922" };
   return                                 { background: "#3a1a1a", color: "#f85149" };
+}
+
+function niveauColor(niveau) {
+  if (niveau === "Débutant")      return "#3fb950";
+  if (niveau === "Intermédiaire") return "#d29922";
+  return "#f85149";
+}
+
+// ── Modal Ajout Projet (4 étapes) ─────────────────────────────────────────────
+function ModalAjoutProjet({ projet, onClose, user, userData }) {
+  const isEdit = !!projet;
+  const [etape, setEtape] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+
+  const [form, setForm] = useState({
+    titre: projet?.titre || "",
+    description: projet?.description || "",
+    niveau: projet?.niveau || "Intermédiaire",
+    duree: projet?.duree || "8h",
+    image: projet?.image || "",
+    livrables: projet?.livrables || [...LIVRABLES_DEFAUT],
+    travaux: projet?.travaux || [{ titre: "", description: "" }],
+    ressources: projet?.ressources || [],
+    statut: projet?.statut || "publié",
+  });
+
+  const [newRessource, setNewRessource] = useState({ titre: "", type: "youtube", url: "", nom: "" });
+
+  const inp = {
+    width: "100%", padding: "8px 12px", background: "#0d1117",
+    border: "1px solid #30363d", borderRadius: 8, color: "#e6edf3",
+    fontSize: 13, outline: "none", boxSizing: "border-box",
+  };
+
+  // ✅ Upload image projet
+  const handleUploadImage = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ressource/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setForm(f => ({ ...f, image: data.url }));
+    } catch { alert("Erreur upload image"); }
+    finally { setUploadingImage(false); }
+  };
+
+  // ✅ Upload PDF ressource via Cloudinary
+  const handleUploadPdf = async (file) => {
+    if (!file) return;
+    setUploadingPdf(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/ressource/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      setNewRessource(r => ({ ...r, url: data.url, nom: file.name }));
+    } catch { alert("Erreur upload PDF"); }
+    finally { setUploadingPdf(false); }
+  };
+
+  const toggleLivrable = (l) => {
+    setForm(f => ({
+      ...f,
+      livrables: f.livrables.includes(l)
+        ? f.livrables.filter(x => x !== l)
+        : [...f.livrables, l],
+    }));
+  };
+
+  const addTravail = () => setForm(f => ({ ...f, travaux: [...f.travaux, { titre: "", description: "" }] }));
+  const removeTravail = (i) => setForm(f => ({ ...f, travaux: f.travaux.filter((_, idx) => idx !== i) }));
+  const updateTravail = (i, field, val) => setForm(f => {
+    const t = [...f.travaux];
+    t[i] = { ...t[i], [field]: val };
+    return { ...f, travaux: t };
+  });
+
+  // ✅ Ajouter ressource — vérifie titre + url (uploadée ou saisie)
+  const addRessource = () => {
+    if (!newRessource.titre.trim()) { alert("Titre requis"); return; }
+    if (!newRessource.url.trim()) {
+      alert(newRessource.type === "pdf" ? "Veuillez uploader un fichier PDF" : "Veuillez saisir un lien YouTube");
+      return;
+    }
+    setForm(f => ({ ...f, ressources: [...f.ressources, { ...newRessource }] }));
+    setNewRessource({ titre: "", type: newRessource.type, url: "", nom: "" });
+  };
+
+  const removeRessource = (i) => setForm(f => ({ ...f, ressources: f.ressources.filter((_, idx) => idx !== i) }));
+
+  const handleSave = async () => {
+    if (!form.titre.trim()) { alert("Titre requis"); return; }
+    setSaving(true);
+    try {
+      const data = {
+        titre: form.titre.trim(),
+        description: form.description.trim(),
+        niveau: form.niveau,
+        duree: form.duree,
+        image: form.image,
+        livrables: form.livrables,
+        travaux: form.travaux.filter(t => t.titre.trim()),
+        ressources: form.ressources,
+        statut: form.statut,
+        profId: user.uid,
+        profNom: `${userData?.prenom} ${userData?.nom}`,
+        updatedAt: serverTimestamp(),
+      };
+      if (isEdit) {
+        await updateDoc(doc(db, "projets", projet.id), data);
+      } else {
+        await addDoc(collection(db, "projets"), { ...data, createdAt: serverTimestamp() });
+      }
+      onClose(true);
+    } catch (e) { console.error(e); alert("Erreur sauvegarde"); }
+    finally { setSaving(false); }
+  };
+
+  const etapes = ["Infos", "Livrables", "Travaux", "Ressources"];
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16, overflowY: "auto" }}>
+      <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 16, width: "100%", maxWidth: 560, maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+
+        {/* Header */}
+        <div style={{ borderBottom: "1px solid #21262d", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <h3 style={{ color: "#e6edf3", fontSize: 15, fontWeight: 600 }}>
+            {isEdit ? "Modifier le projet" : "Nouveau projet"}
+          </h3>
+          <button onClick={() => onClose(false)} style={{ background: "none", border: "none", color: "#8b949e", fontSize: 18, cursor: "pointer" }}>✕</button>
+        </div>
+
+        {/* Stepper */}
+        <div style={{ display: "flex", borderBottom: "1px solid #21262d", flexShrink: 0 }}>
+          {etapes.map((e, i) => (
+            <button key={e} onClick={() => setEtape(i + 1)}
+              style={{
+                flex: 1, padding: "10px 4px", fontSize: 11, fontWeight: 500, border: "none", cursor: "pointer",
+                background: etape === i + 1 ? "#1f6feb" : "transparent",
+                color: etape === i + 1 ? "#fff" : "#8b949e",
+                borderBottom: etape === i + 1 ? "2px solid #1f6feb" : "2px solid transparent",
+                transition: "all 0.15s",
+              }}>
+              {i + 1}. {e}
+            </button>
+          ))}
+        </div>
+
+        {/* Contenu scrollable */}
+        <div style={{ padding: 20, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Étape 1 : Infos */}
+          {etape === 1 && (
+            <>
+              <div>
+                <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Titre du projet *</label>
+                <input style={inp} value={form.titre} onChange={e => setForm(f => ({ ...f, titre: e.target.value }))} placeholder="Ex: Réducteur mécanique" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Description</label>
+                <textarea style={{ ...inp, resize: "vertical", minHeight: 80 }} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Concevez et analysez un réducteur complet de A à Z" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Niveau</label>
+                  <select style={inp} value={form.niveau} onChange={e => setForm(f => ({ ...f, niveau: e.target.value }))}>
+                    {NIVEAUX.map(n => <option key={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Durée estimée</label>
+                  <select style={inp} value={form.duree} onChange={e => setForm(f => ({ ...f, duree: e.target.value }))}>
+                    {["2h", "4h", "6h", "8h", "12h", "16h", "20h", "24h", "+24h"].map(d => <option key={d}>{d}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Image du projet</label>
+                <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#0d1117", border: "1px dashed #30363d", borderRadius: 8, cursor: "pointer" }}>
+                  <span style={{ fontSize: 18 }}>🖼</span>
+                  <span style={{ fontSize: 13, color: form.image ? "#3fb950" : "#8b949e" }}>
+                    {uploadingImage ? "Upload..." : form.image ? "✓ Image chargée" : "Choisir une image"}
+                  </span>
+                  <input type="file" accept="image/*" style={{ display: "none" }} onChange={e => handleUploadImage(e.target.files?.[0])} disabled={uploadingImage} />
+                </label>
+                {form.image && <img src={form.image} alt="aperçu" style={{ marginTop: 8, width: "100%", height: 120, objectFit: "cover", borderRadius: 8, border: "1px solid #30363d" }} />}
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Statut</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["publié", "brouillon"].map(s => (
+                    <button key={s} onClick={() => setForm(f => ({ ...f, statut: s }))}
+                      style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${form.statut === s ? "#1f6feb" : "#30363d"}`, background: form.statut === s ? "#1f3a5f" : "transparent", color: form.statut === s ? "#58a6ff" : "#8b949e", fontSize: 12, cursor: "pointer" }}>
+                      {s === "publié" ? "✅ Publié" : "📝 Brouillon"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Étape 2 : Livrables */}
+          {etape === 2 && (
+            <>
+              <p style={{ fontSize: 12, color: "#8b949e" }}>Sélectionnez les livrables attendus :</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {LIVRABLES_DEFAUT.map(l => (
+                  <div key={l} onClick={() => toggleLivrable(l)}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: form.livrables.includes(l) ? "#1f3a5f" : "#0d1117", border: `1px solid ${form.livrables.includes(l) ? "#1f6feb" : "#30363d"}`, borderRadius: 8, cursor: "pointer" }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 4, background: form.livrables.includes(l) ? "#1f6feb" : "transparent", border: `1px solid ${form.livrables.includes(l) ? "#1f6feb" : "#30363d"}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {form.livrables.includes(l) && <span style={{ color: "#fff", fontSize: 11 }}>✓</span>}
+                    </div>
+                    <span style={{ fontSize: 13, color: form.livrables.includes(l) ? "#e6edf3" : "#8b949e" }}>{l}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Livrable personnalisé (optionnel)</label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input id="custom-livrable" style={{ ...inp, flex: 1 }} placeholder="Ex: Rapport de projet" />
+                  <button onClick={() => {
+                    const val = document.getElementById("custom-livrable").value.trim();
+                    if (val && !form.livrables.includes(val)) {
+                      setForm(f => ({ ...f, livrables: [...f.livrables, val] }));
+                      document.getElementById("custom-livrable").value = "";
+                    }
+                  }} style={{ padding: "8px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", fontSize: 12, cursor: "pointer" }}>
+                    Ajouter
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Étape 3 : Travaux */}
+          {etape === 3 && (
+            <>
+              <p style={{ fontSize: 12, color: "#8b949e" }}>Listez les tâches que l'étudiant doit réaliser :</p>
+              {form.travaux.map((t, i) => (
+                <div key={i} style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 8, padding: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, color: "#7d8590", fontWeight: 600 }}>Tâche {i + 1}</span>
+                    {form.travaux.length > 1 && (
+                      <button onClick={() => removeTravail(i)} style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", fontSize: 12 }}>✕ Supprimer</button>
+                    )}
+                  </div>
+                  <input style={{ ...inp, marginBottom: 8 }} value={t.titre} onChange={e => updateTravail(i, "titre", e.target.value)} placeholder="Ex: Modélisation 3D SolidWorks" />
+                  <textarea style={{ ...inp, resize: "vertical", minHeight: 60 }} value={t.description} onChange={e => updateTravail(i, "description", e.target.value)} placeholder="Description détaillée (optionnel)" />
+                </div>
+              ))}
+              <button onClick={addTravail} style={{ padding: "8px 14px", borderRadius: 8, background: "transparent", border: "1px dashed #30363d", color: "#8b949e", fontSize: 12, cursor: "pointer" }}>
+                + Ajouter une tâche
+              </button>
+            </>
+          )}
+
+          {/* ✅ Étape 4 : Ressources — avec upload PDF */}
+          {etape === 4 && (
+            <>
+              <p style={{ fontSize: 12, color: "#8b949e" }}>Ajoutez les ressources fournies aux étudiants :</p>
+
+              {/* Liste ressources ajoutées */}
+              {form.ressources.map((r, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#0d1117", border: "1px solid #21262d", borderRadius: 8 }}>
+                  <span style={{ fontSize: 14 }}>{r.type === "youtube" ? "▶" : "📄"}</span>
+                  <span style={{ flex: 1, fontSize: 12, color: "#e6edf3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.titre}</span>
+                  <span style={{ fontSize: 10, color: "#7d8590", flexShrink: 0 }}>{r.type === "youtube" ? "YouTube" : r.nom || "PDF"}</span>
+                  <button onClick={() => removeRessource(i)} style={{ background: "none", border: "none", color: "#f85149", cursor: "pointer", fontSize: 14, flexShrink: 0 }}>✕</button>
+                </div>
+              ))}
+
+              {/* Formulaire ajout ressource */}
+              <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+
+                {/* Toggle YouTube / PDF */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  {["youtube", "pdf"].map(t => (
+                    <button key={t}
+                      onClick={() => setNewRessource(r => ({ titre: r.titre, type: t, url: "", nom: "" }))}
+                      style={{ flex: 1, padding: "8px", borderRadius: 8, border: `1px solid ${newRessource.type === t ? "#1f6feb" : "#30363d"}`, background: newRessource.type === t ? "#1f3a5f" : "transparent", color: newRessource.type === t ? "#58a6ff" : "#8b949e", fontSize: 12, cursor: "pointer", fontWeight: newRessource.type === t ? 600 : 400 }}>
+                      {t === "youtube" ? "▶ YouTube" : "📄 PDF"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Titre */}
+                <input style={inp} value={newRessource.titre} onChange={e => setNewRessource(r => ({ ...r, titre: e.target.value }))} placeholder="Titre de la ressource *" />
+
+                {/* ✅ YouTube : champ URL / PDF : bouton upload */}
+                {newRessource.type === "youtube" ? (
+                  <input
+                    style={inp}
+                    value={newRessource.url}
+                    onChange={e => setNewRessource(r => ({ ...r, url: e.target.value }))}
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                ) : (
+                  <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#161b22", border: `1px dashed ${newRessource.url ? "#3fb950" : "#30363d"}`, borderRadius: 8, cursor: uploadingPdf ? "wait" : "pointer" }}>
+                    <span style={{ fontSize: 18 }}>📄</span>
+                    <span style={{ fontSize: 13, color: newRessource.url ? "#3fb950" : "#8b949e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {uploadingPdf ? "Upload en cours..." : newRessource.url ? `✓ ${newRessource.nom || "Fichier chargé"}` : "Cliquer pour uploader un PDF"}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.sldprt,.sldasm,.CATPart,.CATProduct"
+                      style={{ display: "none" }}
+                      onChange={e => handleUploadPdf(e.target.files?.[0])}
+                      disabled={uploadingPdf}
+                    />
+                  </label>
+                )}
+
+                {/* Bouton ajouter */}
+                <button
+                  onClick={addRessource}
+                  disabled={uploadingPdf || !newRessource.titre.trim() || !newRessource.url}
+                  style={{ padding: "9px", borderRadius: 8, background: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#21262d" : "#1f6feb", border: "none", color: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#8b949e" : "#fff", fontSize: 13, fontWeight: 600, cursor: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                  + Ajouter cette ressource
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ borderTop: "1px solid #21262d", padding: "14px 20px", display: "flex", justifyContent: "space-between", flexShrink: 0 }}>
+          <div>
+            {etape > 1 && (
+              <button onClick={() => setEtape(e => e - 1)} style={{ padding: "8px 16px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 13, cursor: "pointer" }}>← Précédent</button>
+            )}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => onClose(false)} style={{ padding: "8px 16px", borderRadius: 8, background: "transparent", border: "1px solid #30363d", color: "#8b949e", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+            {etape < 4 ? (
+              <button onClick={() => setEtape(e => e + 1)} style={{ padding: "8px 16px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Suivant →</button>
+            ) : (
+              <button onClick={handleSave} disabled={saving} style={{ padding: "8px 16px", borderRadius: 8, background: saving ? "#1a3a5f" : "#1f6feb", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "wait" : "pointer" }}>
+                {saving ? "Enregistrement..." : isEdit ? "Modifier" : "Publier le projet"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Card Projet ────────────────────────────────────────────────────────────────
+function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile }) {
+  return (
+    <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24 }}>
+      <div style={{ width: isMobile ? "100%" : 140, height: isMobile ? 160 : 180, borderRadius: 10, background: "#0d1117", border: "1px solid #30363d", overflow: "hidden", flexShrink: 0 }}>
+        {projet.image ? <img src={projet.image} alt={projet.titre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>🔧</div>}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: "#7d8590", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>PROJET COMPLET</div>
+          {isProf && (
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button onClick={() => onEdit(projet)} style={{ padding: "3px 10px", borderRadius: 6, background: "#21262d", border: "1px solid #30363d", color: "#8b949e", fontSize: 11, cursor: "pointer" }}>✏ Modifier</button>
+              <button onClick={() => onDelete(projet)} style={{ padding: "3px 10px", borderRadius: 6, background: "rgba(218,54,51,0.1)", border: "1px solid rgba(218,54,51,0.3)", color: "#f85149", fontSize: 11, cursor: "pointer" }}>✕</button>
+            </div>
+          )}
+        </div>
+        <h3 style={{ fontSize: 15, fontWeight: 600, color: "#e6edf3", marginBottom: 6 }}>{projet.titre}</h3>
+        <p style={{ fontSize: 12, color: "#8b949e", marginBottom: 12, lineHeight: 1.5 }}>{projet.description}</p>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
+          {[{ icon: "⏱", label: "Durée", val: projet.duree, color: "#e6edf3" }, { icon: "📁", label: "Ressources", val: projet.ressources?.length || 0, color: "#e6edf3" }, { icon: "📊", label: "Niveau", val: projet.niveau, color: niveauColor(projet.niveau) }].map(({ icon, label, val, color }) => (
+            <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 14 }}>{icon}</span>
+              <div>
+                <div style={{ fontSize: 9, color: "#7d8590", fontWeight: 600, textTransform: "uppercase" }}>{label}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color }}>{val}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 14, alignItems: isMobile ? "stretch" : "flex-end" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 14px", flex: 1 }}>
+            {projet.livrables?.map(item => (
+              <div key={item} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#c9d1d9" }}>
+                <span style={{ fontSize: 12, color: "#3fb950" }}>✓</span><span>{item}</span>
+              </div>
+            ))}
+          </div>
+          <button onClick={() => onStart(projet.id)}
+            style={{ padding: "10px 20px", fontSize: 13, fontWeight: 600, background: "#1f6feb", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+            onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
+            onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}>
+            Commencer le projet
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ProgressBar({ current }) {
@@ -56,42 +461,15 @@ function LogicielCard({ logiciel, stats = {}, onNavigate, isProf, onDelete }) {
   const { modules = 0, videos = 0, exercices = 0, projects = 0 } = stats;
   const [hovered, setHovered] = useState(false);
   return (
-    <div
-      onClick={onNavigate}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: "#161b22", border: `1px solid ${hovered ? "#30363d" : "#21262d"}`,
-        borderRadius: 12, padding: 20, cursor: "pointer",
-        transition: "all 0.2s", position: "relative",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
-        boxSizing: "border-box", width: "100%",
-      }}
-    >
+    <div onClick={onNavigate} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{ background: "#161b22", border: `1px solid ${hovered ? "#30363d" : "#21262d"}`, borderRadius: 12, padding: 20, cursor: "pointer", transition: "all 0.2s", position: "relative", transform: hovered ? "translateY(-2px)" : "translateY(0)", boxSizing: "border-box", width: "100%" }}>
       {isProf && !logiciel.fixe && (
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(logiciel); }}
-          style={{
-            position: "absolute", top: 10, right: 10,
-            width: 24, height: 24, borderRadius: 6,
-            background: "rgba(218,54,51,0.85)", border: "none",
-            color: "#fff", fontSize: 12, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: hovered ? 1 : 0, transition: "opacity 0.2s"
-          }}
-          title="Supprimer ce logiciel"
-        >✕</button>
+        <button onClick={e => { e.stopPropagation(); onDelete(logiciel); }}
+          style={{ position: "absolute", top: 10, right: 10, width: 24, height: 24, borderRadius: 6, background: "rgba(218,54,51,0.85)", border: "none", color: "#fff", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: hovered ? 1 : 0, transition: "opacity 0.2s" }}>✕</button>
       )}
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 8, background: logiciel.logoBg,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, overflow: "hidden"
-        }}>
-          {logiciel.logo
-            ? <img src={logiciel.logo} alt={logiciel.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-            : <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{logiciel.label.slice(0, 3).toUpperCase()}</span>
-          }
+        <div style={{ width: 48, height: 48, borderRadius: 8, background: logiciel.logoBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+          {logiciel.logo ? <img src={logiciel.logo} alt={logiciel.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 11, fontWeight: 800, color: "#fff" }}>{logiciel.label.slice(0, 3).toUpperCase()}</span>}
         </div>
         <div>
           <div style={{ fontSize: 14, fontWeight: 500, color: "#e6edf3" }}>{logiciel.label}</div>
@@ -107,16 +485,10 @@ function LogicielCard({ logiciel, stats = {}, onNavigate, isProf, onDelete }) {
           </div>
         ))}
       </div>
-      <button
-        onClick={e => { e.stopPropagation(); onNavigate(); }}
-        style={{
-          width: "100%", marginTop: 14, padding: "8px", borderRadius: 8,
-          background: "#21262d", border: "1px solid #30363d",
-          color: "#c9d1d9", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.2s"
-        }}
+      <button onClick={e => { e.stopPropagation(); onNavigate(); }}
+        style={{ width: "100%", marginTop: 14, padding: "8px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
         onMouseEnter={e => { e.currentTarget.style.background = "#1f6feb"; e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#fff"; }}
-        onMouseLeave={e => { e.currentTarget.style.background = "#21262d"; e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#c9d1d9"; }}
-      >
+        onMouseLeave={e => { e.currentTarget.style.background = "#21262d"; e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#c9d1d9"; }}>
         Entrer dans l'espace →
       </button>
     </div>
@@ -129,7 +501,7 @@ function ModalConfirmSuppr({ logiciel, onConfirm, onCancel }) {
       <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 24, maxWidth: 360, width: "100%" }}>
         <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🗑️</div>
         <p style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8, fontWeight: 600, textAlign: "center" }}>Supprimer "{logiciel.label}" ?</p>
-        <p style={{ color: "#8b949e", fontSize: 12, marginBottom: 20, textAlign: "center", lineHeight: 1.5 }}>Cette action supprimera le logiciel et toutes ses ressources associées. Elle est irréversible.</p>
+        <p style={{ color: "#8b949e", fontSize: 12, marginBottom: 20, textAlign: "center", lineHeight: 1.5 }}>Cette action supprimera le logiciel et toutes ses ressources. Elle est irréversible.</p>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={onCancel} style={{ flex: 1, padding: "9px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 13, cursor: "pointer" }}>Annuler</button>
           <button onClick={onConfirm} style={{ flex: 1, padding: "9px", borderRadius: 8, background: "#da3633", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Supprimer</button>
@@ -139,7 +511,22 @@ function ModalConfirmSuppr({ logiciel, onConfirm, onCancel }) {
   );
 }
 
-// ── Carousel DESKTOP uniquement ────────────────────────────────────────────────
+function ModalConfirmSupprProjet({ projet, onConfirm, onCancel }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 210, padding: 16 }}>
+      <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 12, padding: 24, maxWidth: 360, width: "100%" }}>
+        <div style={{ fontSize: 32, marginBottom: 12, textAlign: "center" }}>🗑️</div>
+        <p style={{ color: "#e6edf3", fontSize: 14, marginBottom: 8, fontWeight: 600, textAlign: "center" }}>Supprimer "{projet.titre}" ?</p>
+        <p style={{ color: "#8b949e", fontSize: 12, marginBottom: 20, textAlign: "center", lineHeight: 1.5 }}>Cette action est irréversible.</p>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: "9px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 13, cursor: "pointer" }}>Annuler</button>
+          <button onClick={onConfirm} style={{ flex: 1, padding: "9px", borderRadius: 8, background: "#da3633", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Supprimer</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LogicielsCarousel({ logiciels, logicielStats, onNavigate, isProf, onAdd, onDelete }) {
   const trackRef = useRef(null);
   const containerRef = useRef(null);
@@ -161,7 +548,6 @@ function LogicielsCarousel({ logiciels, logicielStats, onNavigate, isProf, onAdd
   };
 
   useEffect(() => { scrollTo(0); }, [total]);
-
   useEffect(() => {
     const handleResize = () => scrollTo(currentIndex);
     window.addEventListener("resize", handleResize);
@@ -178,16 +564,17 @@ function LogicielsCarousel({ logiciels, logicielStats, onNavigate, isProf, onAdd
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {total > VISIBLE && (
             <>
-              <button onClick={() => scrollTo(currentIndex - 1)} disabled={!canPrev} style={{ width: 32, height: 32, borderRadius: 8, background: canPrev ? "#21262d" : "#161b22", border: `1px solid ${canPrev ? "#30363d" : "#21262d"}`, color: canPrev ? "#e6edf3" : "#3d444d", fontSize: 16, cursor: canPrev ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>‹</button>
-              <button onClick={() => scrollTo(currentIndex + 1)} disabled={!canNext} style={{ width: 32, height: 32, borderRadius: 8, background: canNext ? "#21262d" : "#161b22", border: `1px solid ${canNext ? "#30363d" : "#21262d"}`, color: canNext ? "#e6edf3" : "#3d444d", fontSize: 16, cursor: canNext ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.15s" }}>›</button>
+              <button onClick={() => scrollTo(currentIndex - 1)} disabled={!canPrev} style={{ width: 32, height: 32, borderRadius: 8, background: canPrev ? "#21262d" : "#161b22", border: `1px solid ${canPrev ? "#30363d" : "#21262d"}`, color: canPrev ? "#e6edf3" : "#3d444d", fontSize: 16, cursor: canPrev ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>‹</button>
+              <button onClick={() => scrollTo(currentIndex + 1)} disabled={!canNext} style={{ width: 32, height: 32, borderRadius: 8, background: canNext ? "#21262d" : "#161b22", border: `1px solid ${canNext ? "#30363d" : "#21262d"}`, color: canNext ? "#e6edf3" : "#3d444d", fontSize: 16, cursor: canNext ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>›</button>
             </>
           )}
           {isProf && (
             <button onClick={onAdd}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.2s" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, fontWeight: 500, cursor: "pointer" }}
               onMouseEnter={e => { e.currentTarget.style.background = "#1f6feb"; e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#21262d"; e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#c9d1d9"; }}
-            >+ Ajouter</button>
+              onMouseLeave={e => { e.currentTarget.style.background = "#21262d"; e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#c9d1d9"; }}>
+              + Ajouter
+            </button>
           )}
         </div>
       </div>
@@ -211,42 +598,23 @@ function LogicielsCarousel({ logiciels, logicielStats, onNavigate, isProf, onAdd
   );
 }
 
-// ── Grille MOBILE compacte (logo + nom + fleche uniquement) ──────────────────
 function MobileLogicielCard({ logiciel, onNavigate, isProf, onDelete }) {
   const [hovered, setHovered] = useState(false);
   return (
-    <div
-      onClick={onNavigate}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: "#161b22",
-        border: "1px solid " + (hovered ? "#30363d" : "#21262d"),
-        borderRadius: 12, padding: "16px 14px", cursor: "pointer",
-        transition: "all 0.2s", position: "relative",
-        display: "flex", flexDirection: "column",
-        alignItems: "center", gap: 10, textAlign: "center",
-      }}
-    >
+    <div onClick={onNavigate} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      style={{ background: "#161b22", border: "1px solid " + (hovered ? "#30363d" : "#21262d"), borderRadius: 12, padding: "16px 14px", cursor: "pointer", transition: "all 0.2s", position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center" }}>
       {isProf && !logiciel.fixe && (
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(logiciel); }}
-          style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: 4, background: "rgba(218,54,51,0.85)", border: "none", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: hovered ? 1 : 0, transition: "opacity 0.2s" }}
-        >x</button>
+        <button onClick={e => { e.stopPropagation(); onDelete(logiciel); }}
+          style={{ position: "absolute", top: 6, right: 6, width: 20, height: 20, borderRadius: 4, background: "rgba(218,54,51,0.85)", border: "none", color: "#fff", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: hovered ? 1 : 0, transition: "opacity 0.2s" }}>x</button>
       )}
       <div style={{ width: 52, height: 52, borderRadius: 12, background: logiciel.logoBg, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
-        {logiciel.logo
-          ? <img src={logiciel.logo} alt={logiciel.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <span style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>{logiciel.label.slice(0, 3).toUpperCase()}</span>
-        }
+        {logiciel.logo ? <img src={logiciel.logo} alt={logiciel.label} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{ fontSize: 12, fontWeight: 800, color: "#fff" }}>{logiciel.label.slice(0, 3).toUpperCase()}</span>}
       </div>
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: "#e6edf3", lineHeight: 1.3 }}>{logiciel.label}</div>
         <div style={{ fontSize: 11, color: "#7d8590", marginTop: 2 }}>{logiciel.sub}</div>
       </div>
-      <div style={{ width: "100%", padding: "6px 0", background: "#21262d", borderRadius: 8, fontSize: 11, color: "#8b949e", textAlign: "center" }}>
-        Ouvrir →
-      </div>
+      <div style={{ width: "100%", padding: "6px 0", background: "#21262d", borderRadius: 8, fontSize: 11, color: "#8b949e", textAlign: "center" }}>Ouvrir →</div>
     </div>
   );
 }
@@ -255,18 +623,11 @@ function LogicielsMobile({ logiciels, logicielStats, onNavigate, isProf, onAdd, 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 500, color: "#e6edf3" }}>
-          Nos formations
-          <span style={{ fontSize: 11, color: "#7d8590", fontWeight: 400, marginLeft: 8 }}>{logiciels.length}</span>
-        </h2>
-        {isProf && (
-          <button onClick={onAdd} style={{ padding: "6px 12px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, cursor: "pointer" }}>+ Ajouter</button>
-        )}
+        <h2 style={{ fontSize: 16, fontWeight: 500, color: "#e6edf3" }}>Nos formations <span style={{ fontSize: 11, color: "#7d8590", fontWeight: 400, marginLeft: 8 }}>{logiciels.length}</span></h2>
+        {isProf && <button onClick={onAdd} style={{ padding: "6px 12px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, cursor: "pointer" }}>+ Ajouter</button>}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        {logiciels.map(log => (
-          <MobileLogicielCard key={log.id} logiciel={log} onNavigate={() => onNavigate(log.id)} isProf={isProf} onDelete={onDelete} />
-        ))}
+        {logiciels.map(log => <MobileLogicielCard key={log.id} logiciel={log} onNavigate={() => onNavigate(log.id)} isProf={isProf} onDelete={onDelete} />)}
       </div>
     </div>
   );
@@ -276,7 +637,6 @@ function ModalAjoutLogiciel({ onClose }) {
   const [form, setForm] = useState({ label: "", sub: "", logoBg: "#1f6feb", logo: null });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const handleUploadLogo = async (file) => {
     if (!file) return;
     setUploading(true);
@@ -289,7 +649,6 @@ function ModalAjoutLogiciel({ onClose }) {
     } catch { alert("Erreur upload logo"); }
     finally { setUploading(false); }
   };
-
   const handleSubmit = async () => {
     if (!form.label.trim()) { alert("Nom requis"); return; }
     setSaving(true);
@@ -300,9 +659,7 @@ function ModalAjoutLogiciel({ onClose }) {
     } catch (e) { console.error(e); alert("Erreur création logiciel"); }
     finally { setSaving(false); }
   };
-
   const inp = { width: "100%", padding: "8px 12px", background: "#0d1117", border: "1px solid #30363d", borderRadius: 8, color: "#e6edf3", fontSize: 13, outline: "none", boxSizing: "border-box" };
-
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
       <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 14, width: "100%", maxWidth: 420 }}>
@@ -311,14 +668,8 @@ function ModalAjoutLogiciel({ onClose }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#8b949e", fontSize: 18, cursor: "pointer" }}>✕</button>
         </div>
         <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Nom *</label>
-            <input style={inp} value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="Ex: Inventor, FreeCAD..." />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Description courte</label>
-            <input style={inp} value={form.sub} onChange={e => setForm(p => ({ ...p, sub: e.target.value }))} placeholder="Ex: Modélisation paramétrique" />
-          </div>
+          <div><label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Nom *</label><input style={inp} value={form.label} onChange={e => setForm(p => ({ ...p, label: e.target.value }))} placeholder="Ex: Inventor, FreeCAD..." /></div>
+          <div><label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Description courte</label><input style={inp} value={form.sub} onChange={e => setForm(p => ({ ...p, sub: e.target.value }))} placeholder="Ex: Modélisation paramétrique" /></div>
           <div>
             <label style={{ fontSize: 12, color: "#8b949e", display: "block", marginBottom: 6 }}>Couleur + aperçu</label>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -326,7 +677,6 @@ function ModalAjoutLogiciel({ onClose }) {
               <div style={{ width: 48, height: 48, borderRadius: 8, background: form.logoBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#fff", overflow: "hidden" }}>
                 {form.logo ? <img src={form.logo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (form.label.slice(0, 3).toUpperCase() || "LOG")}
               </div>
-              <span style={{ fontSize: 12, color: "#7d8590" }}>Aperçu</span>
             </div>
           </div>
           <div>
@@ -351,16 +701,11 @@ function TutorielCard({ tuto, onClick }) {
   const thumbnail = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
   const badge = badgeStyle(tuto.niveau || "Débutant");
   return (
-    <div onClick={onClick}
-      style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 10, overflow: "hidden", cursor: "pointer", transition: "all 0.2s" }}
+    <div onClick={onClick} style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 10, overflow: "hidden", cursor: "pointer", transition: "all 0.2s" }}
       onMouseEnter={e => e.currentTarget.style.borderColor = "#30363d"}
-      onMouseLeave={e => e.currentTarget.style.borderColor = "#21262d"}
-    >
+      onMouseLeave={e => e.currentTarget.style.borderColor = "#21262d"}>
       <div style={{ width: "100%", aspectRatio: "16/9", background: "#0d1117", position: "relative", overflow: "hidden" }}>
-        {thumbnail
-          ? <img src={thumbnail} alt={tuto.titre} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          : <div style={{ width: "100%", height: "100%", background: "#1c2128", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>▶</div>
-        }
+        {thumbnail ? <img src={thumbnail} alt={tuto.titre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", background: "#1c2128", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>▶</div>}
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#ff0000cc", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>▶</div>
         </div>
@@ -400,7 +745,6 @@ function YouTubeViewer({ tuto, onClose }) {
 export default function LogicielsPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
-  // ⚠️ FIX : initialiser à false pour éviter le flash SSR
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   const [logiciels, setLogiciels] = useState(LOGICIELS_FIXES);
@@ -412,14 +756,16 @@ export default function LogicielsPage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mounted, setMounted] = useState(false);
 
+  const [projets, setProjets] = useState([]);
+  const [loadingProjets, setLoadingProjets] = useState(true);
+  const [showModalProjet, setShowModalProjet] = useState(false);
+  const [editingProjet, setEditingProjet] = useState(null);
+  const [confirmDeleteProjet, setConfirmDeleteProjet] = useState(null);
+
   const isProf = userData?.role === "PROF" || userData?.role === "ADMIN";
 
-  // ⚠️ FIX : attendre le montage côté client avant de rendre les composants sensibles au viewport
   useEffect(() => { setMounted(true); }, []);
-
-  useEffect(() => {
-    if (user === null) router.push("/login");
-  }, [user]);
+  useEffect(() => { if (user === null) router.push("/login"); }, [user]);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "logiciels"), (snap) => {
@@ -436,10 +782,28 @@ export default function LogicielsPage() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, "projets"), orderBy("createdAt", "desc")),
+      (snap) => {
+        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setProjets(isProf ? data : data.filter(p => p.statut === "publié"));
+        setLoadingProjets(false);
+      }
+    );
+    return () => unsub();
+  }, [isProf]);
+
   const handleDeleteLogiciel = async (logiciel) => {
     try { await deleteDoc(doc(db, "logiciels", logiciel.firestoreId)); }
     catch (e) { console.error(e); alert("Erreur suppression logiciel"); }
     setConfirmDelete(null);
+  };
+
+  const handleDeleteProjet = async (projet) => {
+    try { await deleteDoc(doc(db, "projets", projet.id)); }
+    catch (e) { console.error(e); alert("Erreur suppression projet"); }
+    setConfirmDeleteProjet(null);
   };
 
   useEffect(() => {
@@ -502,97 +866,52 @@ export default function LogicielsPage() {
   if (!user || !userData) return null;
 
   return (
-    // ⚠️ FIX PRINCIPAL : overflow-x hidden sur le conteneur racine
     <div style={{ minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "sans-serif", overflowX: "hidden" }}>
-      <div style={{
-        maxWidth: 1100, margin: "0 auto",
-        // ⚠️ FIX : padding adaptatif + box-sizing pour ne pas déborder
-        padding: isMobile ? "20px 12px" : "32px 24px",
-        boxSizing: "border-box",
-        width: "100%",
-      }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "20px 12px" : "32px 24px", boxSizing: "border-box", width: "100%" }}>
 
-        {/* ===== HERO ===== */}
-        <div style={{
-          background: "#161b22", border: "1px solid #21262d", borderRadius: 16,
-          padding: isMobile ? "20px 16px" : "40px 32px",
-          marginBottom: 32,
-          // ⚠️ FIX : colonne sur mobile, côte à côte sur desktop
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          gap: isMobile ? 20 : 32,
-          alignItems: isMobile ? "flex-start" : "center",
-          overflow: "hidden", // contient les enfants
-        }}>
+        {/* HERO */}
+        <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 16, padding: isMobile ? "20px 16px" : "40px 32px", marginBottom: 32, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 20 : 32, alignItems: isMobile ? "flex-start" : "center", overflow: "hidden" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12, color: "#7d8590", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12, fontWeight: 600 }}>Centre de formation CPI</div>
-            {/* ⚠️ FIX : word-break pour éviter débordement texte */}
             <h1 style={{ fontSize: isMobile ? 20 : 32, fontWeight: 600, color: "#e6edf3", marginBottom: 16, lineHeight: 1.3, wordBreak: "break-word" }}>
               Maîtrisez les logiciels industriels avec des contenus de qualité
             </h1>
             <p style={{ fontSize: isMobile ? 12 : 14, color: "#8b949e", marginBottom: 20, lineHeight: 1.6 }}>
               Tutoriaux vidéo, exercices pratiques, projets industriels et ressources téléchargeables pour réussir en BTS CPI.
             </p>
-            {/* ⚠️ FIX : badges en colonne sur très petit écran */}
             <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-              {[
-                { label: "✓ Formations complètes", color: "#3fb950", bg: "#1a3a2a" },
-                { label: "📊 Projets concrets",    color: "#d29922", bg: "#3a2e1a" },
-                { label: "✅ Suivi progression",   color: "#58a6ff", bg: "#1f3a5f" },
-              ].map(({ label, color, bg }) => (
+              {[{ label: "✓ Formations complètes", color: "#3fb950", bg: "#1a3a2a" }, { label: "📊 Projets concrets", color: "#d29922", bg: "#3a2e1a" }, { label: "✅ Suivi progression", color: "#58a6ff", bg: "#1f3a5f" }].map(({ label, color, bg }) => (
                 <span key={label} style={{ display: "inline-flex", alignItems: "center", padding: "5px 10px", fontSize: 11, color, background: bg, borderRadius: 99, whiteSpace: "nowrap" }}>{label}</span>
               ))}
             </div>
-            <button
-              onClick={() => router.push("/logiciels/solidworks")}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", fontSize: 13, fontWeight: 500, background: "#1f6feb", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", transition: "all 0.2s", whiteSpace: "nowrap" }}
+            <button onClick={() => router.push("/logiciels/solidworks")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", fontSize: 13, fontWeight: 500, background: "#1f6feb", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}
               onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
-              onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}
-            >▶ Continuer ma formation</button>
+              onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}>
+              ▶ Continuer ma formation
+            </button>
           </div>
-          {/* ⚠️ FIX : image avec hauteur fixe mais width 100% sur mobile */}
-          <div style={{
-            width: isMobile ? "100%" : 280,
-            height: isMobile ? 180 : 260,
-            borderRadius: 12, overflow: "hidden",
-            border: "1px solid #30363d", flexShrink: 0,
-          }}>
+          <div style={{ width: isMobile ? "100%" : 280, height: isMobile ? 180 : 260, borderRadius: 12, overflow: "hidden", border: "1px solid #30363d", flexShrink: 0 }}>
             <img src="/moteur.PNG" alt="Moteur" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
           </div>
         </div>
 
-        {/* ===== CAROUSEL / GRILLE LOGICIELS ===== */}
+        {/* CAROUSEL LOGICIELS */}
         <div style={{ marginBottom: 36 }}>
-          {/* ⚠️ FIX : on n'affiche le bon composant qu'après montage pour éviter le flash */}
           {!mounted ? null : isMobile ? (
-            <LogicielsMobile
-              logiciels={logiciels}
-              logicielStats={logicielStats}
-              onNavigate={(id) => router.push(`/logiciels/${id}`)}
-              isProf={isProf}
-              onAdd={() => setShowModalAjout(true)}
-              onDelete={setConfirmDelete}
-            />
+            <LogicielsMobile logiciels={logiciels} logicielStats={logicielStats} onNavigate={(id) => router.push(`/logiciels/${id}`)} isProf={isProf} onAdd={() => setShowModalAjout(true)} onDelete={setConfirmDelete} />
           ) : (
-            <LogicielsCarousel
-              logiciels={logiciels}
-              logicielStats={logicielStats}
-              onNavigate={(id) => router.push(`/logiciels/${id}`)}
-              isProf={isProf}
-              onAdd={() => setShowModalAjout(true)}
-              onDelete={setConfirmDelete}
-            />
+            <LogicielsCarousel logiciels={logiciels} logicielStats={logicielStats} onNavigate={(id) => router.push(`/logiciels/${id}`)} isProf={isProf} onAdd={() => setShowModalAjout(true)} onDelete={setConfirmDelete} />
           )}
         </div>
 
-        {/* ===== DERNIERS TUTORIELS ===== */}
+        {/* DERNIERS TUTORIELS */}
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h2 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 500, color: "#e6edf3" }}>Derniers tutoriels</h2>
             <button onClick={() => router.push("/logiciels/solidworks")} style={{ fontSize: 12, color: "#58a6ff", background: "none", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}>Voir tout →</button>
           </div>
           {loadingTutos ? (
-            // ⚠️ FIX : 1 colonne sur mobile, 2 sur tablette, 4 sur desktop
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: 12 }}>
               {[1, 2, 3, 4].map(i => (
                 <div key={i} style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 10, overflow: "hidden" }}>
@@ -615,73 +934,65 @@ export default function LogicielsPage() {
           )}
         </div>
 
-        {/* ===== PROJET ===== */}
+        {/* PROJETS À RÉALISER */}
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 500, color: "#e6edf3" }}>Projets à réaliser</h2>
-            <a href="#" style={{ fontSize: 12, color: "#58a6ff", textDecoration: "none", whiteSpace: "nowrap" }}>Voir tous →</a>
+            <h2 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 500, color: "#e6edf3" }}>
+              Projets à réaliser
+              <span style={{ fontSize: 12, color: "#7d8590", fontWeight: 400, marginLeft: 10 }}>{projets.length} projet{projets.length > 1 ? "s" : ""}</span>
+            </h2>
+            {isProf && (
+              <button
+                onClick={() => { setEditingProjet(null); setShowModalProjet(true); }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#c9d1d9", fontSize: 12, fontWeight: 500, cursor: "pointer" }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#1f6feb"; e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#fff"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#21262d"; e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#c9d1d9"; }}>
+                + Nouveau projet
+              </button>
+            )}
           </div>
-          {/* ⚠️ FIX : layout projet en colonne sur mobile */}
-          <div style={{
-            background: "#161b22", border: "1px solid #21262d", borderRadius: 12,
-            padding: isMobile ? 16 : 20,
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            gap: isMobile ? 16 : 24,
-          }}>
-            <div style={{
-              width: isMobile ? "100%" : 140,
-              height: isMobile ? 160 : 180,
-              borderRadius: 10, background: "#0d1117",
-              border: "1px solid #30363d", overflow: "hidden", flexShrink: 0,
-            }}>
-              <img src="/moteur.PNG" alt="Projet" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+
+          {loadingProjets ? (
+            <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
+              <div style={{ width: 24, height: 24, border: "2px solid #1f6feb", borderTopColor: "transparent", borderRadius: "50%", margin: "0 auto" }} />
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 11, color: "#7d8590", fontWeight: 600, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>PROJET COMPLET</div>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#e6edf3", marginBottom: 8 }}>Réducteur mécanique</h3>
-              <p style={{ fontSize: 12, color: "#8b949e", marginBottom: 12, lineHeight: 1.5 }}>Concevez et analysez un réducteur complet de A à Z</p>
-              <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 16 }}>
-                {[{ icon: "⏱", label: "Durée", val: "8h", color: "#e6edf3" }, { icon: "📁", label: "Ressources", val: "32", color: "#e6edf3" }, { icon: "📊", label: "Niveau", val: "Intermédiaire", color: "#d29922" }].map(({ icon, label, val, color }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 14 }}>{icon}</span>
-                    <div>
-                      <div style={{ fontSize: 9, color: "#7d8590", fontWeight: 600, textTransform: "uppercase" }}>{label}</div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color }}>{val}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {/* Checklist + bouton côte à côte sur desktop */}
-              <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", gap: 16, alignItems: isMobile ? "stretch" : "flex-end" }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 16px", flex: 1 }}>
-                  {["Fichiers CAO", "Mise en plan", "Calculs RDM", "Nomenclature", "Simulation", "Guide fabrication"].map(item => (
-                    <div key={item} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#c9d1d9" }}>
-                      <span style={{ fontSize: 12, color: "#3fb950" }}>✓</span><span>{item}</span>
-                    </div>
-                  ))}
-                </div>
-                <button style={{ padding: "10px 20px", fontSize: 13, fontWeight: 600, background: "#1f6feb", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
-                  onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}
-                >Commencer le projet</button>
-              </div>
+          ) : projets.length === 0 ? (
+            <div style={{ background: "#161b22", border: "1px dashed #21262d", borderRadius: 12, padding: "40px 20px", textAlign: "center" }}>
+              <p style={{ color: "#7d8590", fontSize: 13, marginBottom: 8 }}>Aucun projet disponible pour l'instant.</p>
+              {isProf && <button onClick={() => { setEditingProjet(null); setShowModalProjet(true); }} style={{ fontSize: 12, color: "#1f6feb", background: "none", border: "none", cursor: "pointer" }}>+ Créer le premier projet</button>}
             </div>
-          </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {projets.map(projet => (
+                <ProjetCard
+                  key={projet.id}
+                  projet={projet}
+                  isProf={isProf}
+                  isMobile={isMobile}
+                  onEdit={(p) => { setEditingProjet(p); setShowModalProjet(true); }}
+                  onDelete={(p) => setConfirmDeleteProjet(p)}
+                  onStart={(id) => router.push(`/projet/${id}`)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
 
-      {/* ===== MODALS ===== */}
+      {/* MODALS */}
       {viewerTuto && <YouTubeViewer tuto={viewerTuto} onClose={() => setViewerTuto(null)} />}
       {showModalAjout && <ModalAjoutLogiciel onClose={() => setShowModalAjout(false)} />}
-      {confirmDelete && (
-        <ModalConfirmSuppr
-          logiciel={confirmDelete}
-          onConfirm={() => handleDeleteLogiciel(confirmDelete)}
-          onCancel={() => setConfirmDelete(null)}
+      {confirmDelete && <ModalConfirmSuppr logiciel={confirmDelete} onConfirm={() => handleDeleteLogiciel(confirmDelete)} onCancel={() => setConfirmDelete(null)} />}
+      {showModalProjet && (
+        <ModalAjoutProjet
+          projet={editingProjet}
+          user={user}
+          userData={userData}
+          onClose={(refresh) => { setShowModalProjet(false); setEditingProjet(null); }}
         />
       )}
+      {confirmDeleteProjet && <ModalConfirmSupprProjet projet={confirmDeleteProjet} onConfirm={() => handleDeleteProjet(confirmDeleteProjet)} onCancel={() => setConfirmDeleteProjet(null)} />}
     </div>
   );
 }
