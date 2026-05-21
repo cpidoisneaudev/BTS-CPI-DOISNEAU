@@ -2,12 +2,12 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[#21262d] bg-[#0d1117] px-10 py-10">
+    <footer className="border-t border-[#21262d] bg-[#0d1117] px-6 md:px-10 py-10">
       
-      <div className="max-w-6xl mx-auto grid grid-cols-4 gap-10 mb-8">
+      <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-10 mb-8">
         
-        {/* Logo + description */}
-        <div>
+        {/* Logo + description - pleine largeur sur mobile */}
+        <div className="col-span-2 md:col-span-1">
           <Link href="/" className="flex items-center gap-3 mb-4">
             <div className="w-8 h-8 bg-[#00b4d8] rounded-md flex items-center justify-center">
               <svg viewBox="0 0 18 18" className="w-4 h-4 fill-[#0d1117]">
@@ -57,11 +57,11 @@ export default function Footer() {
       </div>
 
       {/* Bas du footer */}
-      <div className="max-w-6xl mx-auto flex justify-between items-center pt-6 border-t border-[#21262d]">
-        <p className="text-[#8b949e] text-xs">
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 pt-6 border-t border-[#21262d]">
+        <p className="text-[#8b949e] text-xs text-center sm:text-left">
           © 2026 CPI Doisneau — Lycée Robert Doisneau, Corbeil-Essonnes
         </p>
-        <span className="text-[#8b949e] text-xs bg-[#161b22] border border-[#21262d] rounded px-3 py-1">
+        <span className="text-[#8b949e] text-xs bg-[#161b22] border border-[#21262d] rounded px-3 py-1 whitespace-nowrap">
           BTS CPI — Promotion 2025/2026
         </span>
       </div>
