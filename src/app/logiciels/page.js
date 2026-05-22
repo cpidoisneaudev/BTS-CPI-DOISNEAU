@@ -1,3 +1,4 @@
+// /logiciels/page.js - VERSION CORRIGÉE
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -65,7 +66,6 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
     image: projet?.image || "",
     livrables: projet?.livrables || [...LIVRABLES_DEFAUT],
     travaux: projet?.travaux || [{ titre: "", description: "" }],
-    ressources: projet?.ressources || [],
     statut: projet?.statut || "publié",
   });
 
@@ -77,7 +77,6 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
     fontSize: 13, outline: "none", boxSizing: "border-box",
   };
 
-  // ✅ Upload image projet
   const handleUploadImage = async (file) => {
     if (!file) return;
     setUploadingImage(true);
@@ -91,7 +90,6 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
     finally { setUploadingImage(false); }
   };
 
-  // ✅ Upload PDF ressource via Cloudinary
   const handleUploadPdf = async (file) => {
     if (!file) return;
     setUploadingPdf(true);
@@ -122,18 +120,20 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
     return { ...f, travaux: t };
   });
 
-  // ✅ Ajouter ressource — vérifie titre + url (uploadée ou saisie)
+  // ✅ Ressources temporaires pour l'étape 4 (affichage seul — sauvegarde via sous-collection)
+  const [tempRessources, setTempRessources] = useState([]);
+
   const addRessource = () => {
     if (!newRessource.titre.trim()) { alert("Titre requis"); return; }
     if (!newRessource.url.trim()) {
       alert(newRessource.type === "pdf" ? "Veuillez uploader un fichier PDF" : "Veuillez saisir un lien YouTube");
       return;
     }
-    setForm(f => ({ ...f, ressources: [...f.ressources, { ...newRessource }] }));
+    setTempRessources(r => [...r, { ...newRessource }]);
     setNewRessource({ titre: "", type: newRessource.type, url: "", nom: "" });
   };
 
-  const removeRessource = (i) => setForm(f => ({ ...f, ressources: f.ressources.filter((_, idx) => idx !== i) }));
+  const removeRessource = (i) => setTempRessources(r => r.filter((_, idx) => idx !== i));
 
   const handleSave = async () => {
     if (!form.titre.trim()) { alert("Titre requis"); return; }
@@ -147,17 +147,40 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
         image: form.image,
         livrables: form.livrables,
         travaux: form.travaux.filter(t => t.titre.trim()),
-        ressources: form.ressources,
         statut: form.statut,
         profId: user.uid,
         profNom: `${userData?.prenom} ${userData?.nom}`,
         updatedAt: serverTimestamp(),
       };
+
+      let projetId;
       if (isEdit) {
         await updateDoc(doc(db, "projets", projet.id), data);
+        projetId = projet.id;
       } else {
-        await addDoc(collection(db, "projets"), { ...data, createdAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "projets"), { ...data, createdAt: serverTimestamp() });
+        projetId = ref.id;
       }
+
+      // ✅ Sauvegarder les ressources dans la sous-collection
+      if (tempRessources.length > 0) {
+        await Promise.all(
+          tempRessources.map(r =>
+            addDoc(collection(db, "projets", projetId, "ressources"), {
+              titre: r.titre,
+              type: r.type,
+              url: r.url,
+              niveau: "Débutant",
+              duree: r.type === "youtube" ? "" : "",
+              pages: "",
+              profId: user.uid,
+              profNom: `${userData?.prenom} ${userData?.nom}`,
+              createdAt: serverTimestamp(),
+            })
+          )
+        );
+      }
+
       onClose(true);
     } catch (e) { console.error(e); alert("Erreur sauvegarde"); }
     finally { setSaving(false); }
@@ -301,13 +324,18 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
             </>
           )}
 
-          {/* ✅ Étape 4 : Ressources — avec upload PDF */}
+          {/* ✅ Étape 4 : Ressources — sauvegardées dans sous-collection */}
           {etape === 4 && (
             <>
               <p style={{ fontSize: 12, color: "#8b949e" }}>Ajoutez les ressources fournies aux étudiants :</p>
 
-              {/* Liste ressources ajoutées */}
-              {form.ressources.map((r, i) => (
+              {tempRessources.length === 0 && (
+                <div style={{ padding: "12px", background: "#0d1117", border: "1px dashed #30363d", borderRadius: 8, textAlign: "center" }}>
+                  <p style={{ fontSize: 12, color: "#7d8590" }}>Aucune ressource ajoutée — vous pourrez en ajouter après la création du projet.</p>
+                </div>
+              )}
+
+              {tempRessources.map((r, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#0d1117", border: "1px solid #21262d", borderRadius: 8 }}>
                   <span style={{ fontSize: 14 }}>{r.type === "youtube" ? "▶" : "📄"}</span>
                   <span style={{ flex: 1, fontSize: 12, color: "#e6edf3", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.titre}</span>
@@ -316,10 +344,7 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
                 </div>
               ))}
 
-              {/* Formulaire ajout ressource */}
               <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 8, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-
-                {/* Toggle YouTube / PDF */}
                 <div style={{ display: "flex", gap: 8 }}>
                   {["youtube", "pdf"].map(t => (
                     <button key={t}
@@ -329,39 +354,20 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
                     </button>
                   ))}
                 </div>
-
-                {/* Titre */}
                 <input style={inp} value={newRessource.titre} onChange={e => setNewRessource(r => ({ ...r, titre: e.target.value }))} placeholder="Titre de la ressource *" />
-
-                {/* ✅ YouTube : champ URL / PDF : bouton upload */}
                 {newRessource.type === "youtube" ? (
-                  <input
-                    style={inp}
-                    value={newRessource.url}
-                    onChange={e => setNewRessource(r => ({ ...r, url: e.target.value }))}
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
+                  <input style={inp} value={newRessource.url} onChange={e => setNewRessource(r => ({ ...r, url: e.target.value }))} placeholder="https://youtube.com/watch?v=..." />
                 ) : (
                   <label style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#161b22", border: `1px dashed ${newRessource.url ? "#3fb950" : "#30363d"}`, borderRadius: 8, cursor: uploadingPdf ? "wait" : "pointer" }}>
                     <span style={{ fontSize: 18 }}>📄</span>
                     <span style={{ fontSize: 13, color: newRessource.url ? "#3fb950" : "#8b949e", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {uploadingPdf ? "Upload en cours..." : newRessource.url ? `✓ ${newRessource.nom || "Fichier chargé"}` : "Cliquer pour uploader un PDF"}
                     </span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.sldprt,.sldasm,.CATPart,.CATProduct"
-                      style={{ display: "none" }}
-                      onChange={e => handleUploadPdf(e.target.files?.[0])}
-                      disabled={uploadingPdf}
-                    />
+                    <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.sldprt,.sldasm,.CATPart,.CATProduct" style={{ display: "none" }} onChange={e => handleUploadPdf(e.target.files?.[0])} disabled={uploadingPdf} />
                   </label>
                 )}
-
-                {/* Bouton ajouter */}
-                <button
-                  onClick={addRessource}
-                  disabled={uploadingPdf || !newRessource.titre.trim() || !newRessource.url}
-                  style={{ padding: "9px", borderRadius: 8, background: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#21262d" : "#1f6feb", border: "none", color: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#8b949e" : "#fff", fontSize: 13, fontWeight: 600, cursor: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "not-allowed" : "pointer", transition: "all 0.2s" }}>
+                <button onClick={addRessource} disabled={uploadingPdf || !newRessource.titre.trim() || !newRessource.url}
+                  style={{ padding: "9px", borderRadius: 8, background: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#21262d" : "#1f6feb", border: "none", color: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "#8b949e" : "#fff", fontSize: 13, fontWeight: 600, cursor: (!newRessource.titre.trim() || !newRessource.url || uploadingPdf) ? "not-allowed" : "pointer" }}>
                   + Ajouter cette ressource
                 </button>
               </div>
@@ -393,7 +399,8 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
 }
 
 // ── Card Projet ────────────────────────────────────────────────────────────────
-function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile }) {
+// ✅ Ajout de la prop ressourcesCount
+function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile, ressourcesCount }) {
   return (
     <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24 }}>
       <div style={{ width: isMobile ? "100%" : 140, height: isMobile ? 160 : 180, borderRadius: 10, background: "#0d1117", border: "1px solid #30363d", overflow: "hidden", flexShrink: 0 }}>
@@ -412,7 +419,12 @@ function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile }) {
         <h3 style={{ fontSize: 15, fontWeight: 600, color: "#e6edf3", marginBottom: 6 }}>{projet.titre}</h3>
         <p style={{ fontSize: 12, color: "#8b949e", marginBottom: 12, lineHeight: 1.5 }}>{projet.description}</p>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
-          {[{ icon: "⏱", label: "Durée", val: projet.duree, color: "#e6edf3" }, { icon: "📁", label: "Ressources", val: projet.ressources?.length || 0, color: "#e6edf3" }, { icon: "📊", label: "Niveau", val: projet.niveau, color: niveauColor(projet.niveau) }].map(({ icon, label, val, color }) => (
+          {[
+            { icon: "⏱", label: "Durée", val: projet.duree, color: "#e6edf3" },
+            // ✅ ressourcesCount depuis la sous-collection Firestore
+            { icon: "📁", label: "Ressources", val: ressourcesCount, color: "#e6edf3" },
+            { icon: "📊", label: "Niveau", val: projet.niveau, color: niveauColor(projet.niveau) }
+          ].map(({ icon, label, val, color }) => (
             <div key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <span style={{ fontSize: 14 }}>{icon}</span>
               <div>
@@ -758,6 +770,8 @@ export default function LogicielsPage() {
 
   const [projets, setProjets] = useState([]);
   const [loadingProjets, setLoadingProjets] = useState(true);
+  // ✅ NOUVEAU : compteurs de ressources depuis les sous-collections
+  const [ressourcesCounts, setRessourcesCounts] = useState({});
   const [showModalProjet, setShowModalProjet] = useState(false);
   const [editingProjet, setEditingProjet] = useState(null);
   const [confirmDeleteProjet, setConfirmDeleteProjet] = useState(null);
@@ -782,13 +796,28 @@ export default function LogicielsPage() {
     return () => unsub();
   }, []);
 
+  // ✅ MODIFIÉ : charge les projets ET les compteurs de ressources depuis les sous-collections
   useEffect(() => {
     const unsub = onSnapshot(
       query(collection(db, "projets"), orderBy("createdAt", "desc")),
-      (snap) => {
+      async (snap) => {
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setProjets(isProf ? data : data.filter(p => p.statut === "publié"));
         setLoadingProjets(false);
+
+        // Charger les compteurs de ressources depuis les sous-collections en parallèle
+        const counts = {};
+        await Promise.all(
+          data.map(async (projet) => {
+            try {
+              const rSnap = await getDocs(collection(db, "projets", projet.id, "ressources"));
+              counts[projet.id] = rSnap.size;
+            } catch {
+              counts[projet.id] = 0;
+            }
+          })
+        );
+        setRessourcesCounts(counts);
       }
     );
     return () => unsub();
@@ -969,6 +998,8 @@ export default function LogicielsPage() {
                   projet={projet}
                   isProf={isProf}
                   isMobile={isMobile}
+                  // ✅ Compteur réel depuis la sous-collection Firestore
+                  ressourcesCount={ressourcesCounts[projet.id] ?? 0}
                   onEdit={(p) => { setEditingProjet(p); setShowModalProjet(true); }}
                   onDelete={(p) => setConfirmDeleteProjet(p)}
                   onStart={(id) => router.push(`/projet/${id}`)}
