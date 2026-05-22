@@ -1,4 +1,4 @@
-// /projet/[id]/page.js
+// /projet/[id]/page.js — VERSION RESPONSIVE MOBILE
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -6,6 +6,17 @@ import { useRouter, useParams } from 'next/navigation';
 import { doc, getDoc, collection, onSnapshot, addDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/AuthContext';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
 
 function getYouTubeId(url) {
   if (!url) return null;
@@ -22,10 +33,10 @@ function niveauColor(niveau) {
 function YouTubeViewer({ url, titre, onClose }) {
   const ytId = getYouTubeId(url);
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 12 }}>
       <div style={{ width: '100%', maxWidth: 900, display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-        <p style={{ color: '#e6edf3', fontSize: 14, fontWeight: 600 }}>{titre}</p>
-        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 8, background: '#21262d', border: '1px solid #30363d', color: '#e6edf3', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+        <p style={{ color: '#e6edf3', fontSize: 13, fontWeight: 600, flex: 1, marginRight: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{titre}</p>
+        <button onClick={onClose} style={{ width: 36, height: 36, borderRadius: 8, background: '#21262d', border: '1px solid #30363d', color: '#e6edf3', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
       </div>
       <div style={{ width: '100%', maxWidth: 900, background: '#000', borderRadius: 12, overflow: 'hidden' }}>
         <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
@@ -60,11 +71,8 @@ function FormAjoutRessource({ projetId, user, userData, onClose }) {
     if (form.type === 'pdf' && !form.url) { alert('Fichier PDF requis'); return; }
     setUploading(true);
     try {
-      // ✅ SOUS-COLLECTION dédiée au projet
       await addDoc(collection(db, 'projets', projetId, 'ressources'), {
-        titre: form.titre.trim(),
-        type: form.type,
-        url: form.url,
+        titre: form.titre.trim(), type: form.type, url: form.url,
         niveau: form.niveau,
         duree: form.type === 'youtube' ? form.duree : '',
         pages: form.type === 'pdf' ? form.pages : '',
@@ -73,10 +81,8 @@ function FormAjoutRessource({ projetId, user, userData, onClose }) {
         createdAt: serverTimestamp(),
       });
       onClose();
-    } catch (e) {
-      console.error(e);
-      alert('Erreur ajout ressource');
-    } finally { setUploading(false); }
+    } catch (e) { console.error(e); alert('Erreur ajout ressource'); }
+    finally { setUploading(false); }
   };
 
   const inp = { width: '100%', padding: '8px 12px', background: '#0d1117', border: '1px solid #30363d', borderRadius: 8, color: '#e6edf3', fontSize: 13, outline: 'none', boxSizing: 'border-box' };
@@ -149,10 +155,11 @@ export default function ProjetDetailPage() {
   const router = useRouter();
   const params = useParams();
   const projetId = params.id;
+  const isMobile = useIsMobile();
 
   const [projet, setProjet] = useState(null);
   const [loadingProjet, setLoadingProjet] = useState(true);
-  const [ressources, setRessources] = useState([]);   // ✅ état séparé pour les ressources
+  const [ressources, setRessources] = useState([]);
   const [viewerYT, setViewerYT] = useState(null);
   const [showFormRessource, setShowFormRessource] = useState(false);
 
@@ -162,7 +169,6 @@ export default function ProjetDetailPage() {
     if (!loading && !user) router.push('/login');
   }, [user, loading]);
 
-  // ✅ Chargement du projet (sans les ressources)
   useEffect(() => {
     if (!projetId) return;
     const fetchProjet = async () => {
@@ -179,13 +185,9 @@ export default function ProjetDetailPage() {
     fetchProjet();
   }, [projetId]);
 
-  // ✅ onSnapshot sur la SOUS-COLLECTION ressources — temps réel
   useEffect(() => {
     if (!projetId) return;
-    const q = query(
-      collection(db, 'projets', projetId, 'ressources'),
-      orderBy('createdAt', 'asc')
-    );
+    const q = query(collection(db, 'projets', projetId, 'ressources'), orderBy('createdAt', 'asc'));
     const unsub = onSnapshot(q, (snap) => {
       setRessources(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -214,73 +216,79 @@ export default function ProjetDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0d1117', color: '#e6edf3', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 16px', boxSizing: 'border-box' }}>
+      <div style={{ maxWidth: 900, margin: '0 auto', padding: isMobile ? '16px 12px' : '32px 16px', boxSizing: 'border-box' }}>
 
-        {/* Retour */}
+        {/* ── Retour ── */}
         <button onClick={() => router.back()}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#8b949e', fontSize: 13, cursor: 'pointer', marginBottom: 24, padding: 0 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#8b949e', fontSize: 13, cursor: 'pointer', marginBottom: 16, padding: 0 }}
           onMouseEnter={e => e.currentTarget.style.color = '#1f6feb'}
           onMouseLeave={e => e.currentTarget.style.color = '#8b949e'}>
           ← Retour
         </button>
 
-        {/* Header */}
-        <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 16, overflow: 'hidden', marginBottom: 24 }}>
+        {/* ── Header projet ── */}
+        <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 16, overflow: 'hidden', marginBottom: 20 }}>
+          {/* Image bannière — hauteur réduite sur mobile */}
           {projet.image && (
-            <div style={{ width: '100%', height: 220, overflow: 'hidden' }}>
-              <img src={projet.image} alt={projet.titre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div style={{ width: '100%', height: isMobile ? 160 : 220, overflow: 'hidden' }}>
+              <img src={projet.image} alt={projet.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
             </div>
           )}
-          <div style={{ padding: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 11, color: '#7d8590', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>PROJET COMPLET</span>
+          <div style={{ padding: isMobile ? 16 : 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 10, color: '#7d8590', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>PROJET COMPLET</span>
               <span style={{ fontSize: 11, padding: '2px 10px', borderRadius: 99, fontWeight: 600, background: badge.bg, color: badge.color }}>{projet.niveau}</span>
             </div>
-            <h1 style={{ fontSize: 26, fontWeight: 700, color: '#e6edf3', marginBottom: 10 }}>{projet.titre}</h1>
-            <p style={{ fontSize: 14, color: '#8b949e', lineHeight: 1.7, marginBottom: 20 }}>{projet.description}</p>
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', paddingTop: 20, borderTop: '1px solid #21262d' }}>
+            <h1 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#e6edf3', marginBottom: 8 }}>{projet.titre}</h1>
+            <p style={{ fontSize: isMobile ? 13 : 14, color: '#8b949e', lineHeight: 1.7, marginBottom: 16 }}>{projet.description}</p>
+
+            {/* Stats — scroll horizontal sur mobile */}
+            <div style={{ display: 'flex', gap: isMobile ? 16 : 24, flexWrap: isMobile ? 'nowrap' : 'wrap', overflowX: isMobile ? 'auto' : 'visible', paddingTop: 16, borderTop: '1px solid #21262d', paddingBottom: isMobile ? 4 : 0 }}>
               {[
                 { icon: '⏱', label: 'Durée estimée', val: projet.duree },
-                { icon: '📁', label: 'Ressources', val: `${ressources.length} fichier${ressources.length !== 1 ? 's' : ''}` }, // ✅ compte réel
+                { icon: '📁', label: 'Ressources', val: `${ressources.length} fichier${ressources.length !== 1 ? 's' : ''}` },
                 { icon: '✅', label: 'Tâches', val: `${projet.travaux?.length || 0} à réaliser` },
                 { icon: '📦', label: 'Livrables', val: `${projet.livrables?.length || 0} attendus` },
               ].map(({ icon, label, val }) => (
-                <div key={label}>
-                  <div style={{ fontSize: 10, color: '#7d8590', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>{icon} {label}</div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3' }}>{val}</div>
+                <div key={label} style={{ flexShrink: 0 }}>
+                  <div style={{ fontSize: 9, color: '#7d8590', fontWeight: 600, textTransform: 'uppercase', marginBottom: 4, whiteSpace: 'nowrap' }}>{icon} {label}</div>
+                  <div style={{ fontSize: isMobile ? 13 : 15, fontWeight: 600, color: '#e6edf3', whiteSpace: 'nowrap' }}>{val}</div>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 280px', gap: 20 }}>
+        {/* ── Layout principal : colonne unique sur mobile, 2 colonnes sur desktop ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'minmax(0,1fr) 280px',
+          gap: 16,
+        }}>
 
-          {/* Colonne principale */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* ── Colonne gauche ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
 
-            {/* ✅ Ressources — depuis la sous-collection en temps réel */}
-            <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>📁</span> Ressources fournies
-                  <span style={{ fontSize: 12, color: '#7d8590', fontWeight: 400 }}>({ressources.length})</span>
+            {/* Ressources */}
+            <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: isMobile ? 14 : 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3', display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
+                  📁 Ressources fournies
+                  <span style={{ fontSize: 11, color: '#7d8590', fontWeight: 400 }}>({ressources.length})</span>
                 </h2>
                 {isProf && (
                   <button onClick={() => setShowFormRessource(true)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, background: '#1f6feb', border: 'none', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#388bfd'}
-                    onMouseLeave={e => e.currentTarget.style.background = '#1f6feb'}>
+                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '5px 10px', borderRadius: 8, background: '#1f6feb', border: 'none', color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
                     + Ajouter
                   </button>
                 )}
               </div>
 
               {ressources.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 0', color: '#7d8590' }}>
-                  <div style={{ fontSize: 32, marginBottom: 8 }}>📂</div>
-                  <p style={{ fontSize: 13 }}>
-                    {isProf ? 'Aucune ressource — cliquez sur "+ Ajouter" pour en ajouter.' : 'Aucune ressource disponible pour ce projet.'}
+                <div style={{ textAlign: 'center', padding: '24px 0', color: '#7d8590' }}>
+                  <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
+                  <p style={{ fontSize: 12 }}>
+                    {isProf ? 'Aucune ressource — cliquez sur "+ Ajouter".' : 'Aucune ressource disponible.'}
                   </p>
                 </div>
               ) : (
@@ -290,34 +298,35 @@ export default function ProjetDetailPage() {
                     const thumbnail = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
                     return (
                       <div key={r.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, cursor: 'pointer', transition: 'all 0.15s', position: 'relative' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#0d1117', border: '1px solid #21262d', borderRadius: 8, cursor: 'pointer', position: 'relative' }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = '#30363d'; e.currentTarget.style.background = '#1c2128'; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = '#21262d'; e.currentTarget.style.background = '#0d1117'; }}>
                         <div onClick={() => r.type === 'youtube' ? setViewerYT(r) : window.open(r.url, '_blank')}
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                          {/* Miniature */}
                           {thumbnail ? (
-                            <div style={{ width: 56, height: 38, borderRadius: 6, overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
-                              <img src={thumbnail} alt={r.titre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <div style={{ width: 50, height: 34, borderRadius: 5, overflow: 'hidden', flexShrink: 0, position: 'relative' }}>
+                              <img src={thumbnail} alt={r.titre} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)' }}>
-                                <span style={{ color: '#fff', fontSize: 14 }}>▶</span>
+                                <span style={{ color: '#fff', fontSize: 12 }}>▶</span>
                               </div>
                             </div>
                           ) : (
-                            <div style={{ width: 56, height: 38, borderRadius: 6, background: '#21262d', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📄</div>
+                            <div style={{ width: 50, height: 34, borderRadius: 5, background: '#21262d', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📄</div>
                           )}
+                          {/* Titre + sous-titre */}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, color: '#e6edf3', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.titre}</div>
-                            <div style={{ fontSize: 11, color: '#7d8590', marginTop: 2 }}>
-                              {r.type === 'youtube' ? '▶ Vidéo YouTube' : '📄 Document PDF'}
-                              {r.profNom && ` · ${r.profNom}`}
+                            <div style={{ fontSize: 12, color: '#e6edf3', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.titre}</div>
+                            <div style={{ fontSize: 10, color: '#7d8590', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {r.type === 'youtube' ? '▶ YouTube' : '📄 PDF'}
+                              {!isMobile && r.profNom && ` · ${r.profNom}`}
                             </div>
                           </div>
-                          <span style={{ fontSize: 12, color: '#8b949e', flexShrink: 0 }}>→</span>
+                          <span style={{ fontSize: 11, color: '#8b949e', flexShrink: 0 }}>→</span>
                         </div>
-                        {/* Bouton suppression prof */}
                         {isProf && (
                           <button onClick={(e) => { e.stopPropagation(); handleDeleteRessource(r.id); }}
-                            style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 4, background: 'rgba(218,54,51,0.8)', border: 'none', color: '#fff', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            style={{ width: 20, height: 20, borderRadius: 4, background: 'rgba(218,54,51,0.8)', border: 'none', color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                             ✕
                           </button>
                         )}
@@ -330,15 +339,15 @@ export default function ProjetDetailPage() {
 
             {/* Travaux à réaliser */}
             {projet.travaux?.length > 0 && (
-              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: 20 }}>
-                <h2 style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>✅</span> Travaux à réaliser
+              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: isMobile ? 14 : 20 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  ✅ Travaux à réaliser
                 </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {projet.travaux.map((t, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 14, padding: 14, background: '#0d1117', border: '1px solid #21262d', borderRadius: 8 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#1f3a5f', border: '1px solid #1f6feb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 700, color: '#58a6ff' }}>{i + 1}</div>
-                      <div style={{ flex: 1 }}>
+                    <div key={i} style={{ display: 'flex', gap: 12, padding: isMobile ? 12 : 14, background: '#0d1117', border: '1px solid #21262d', borderRadius: 8 }}>
+                      <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1f3a5f', border: '1px solid #1f6feb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 11, fontWeight: 700, color: '#58a6ff' }}>{i + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, color: '#e6edf3', marginBottom: t.description ? 4 : 0 }}>{t.titre}</div>
                         {t.description && <div style={{ fontSize: 12, color: '#8b949e', lineHeight: 1.6 }}>{t.description}</div>}
                       </div>
@@ -347,32 +356,59 @@ export default function ProjetDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Livrables sur mobile — affichés dans la colonne principale */}
+            {isMobile && projet.livrables?.length > 0 && (
+              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: 14 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  📦 Livrables attendus
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                  {projet.livrables.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
+                      <span style={{ width: 18, height: 18, borderRadius: '50%', background: '#1a3a2a', border: '1px solid #3fb950', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#3fb950', flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: 13, color: '#c9d1d9' }}>{l}</span>
+                    </div>
+                  ))}
+                </div>
+                <button style={{ width: '100%', padding: 12, background: '#1f6feb', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#388bfd'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#1f6feb'}>
+                  🚀 Commencer le projet
+                </button>
+                <p style={{ fontSize: 11, color: '#7d8590', textAlign: 'center', marginTop: 8 }}>
+                  Par {projet.profNom || "L'équipe pédagogique"}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Colonne droite */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: 20, position: 'sticky', top: 80 }}>
-              <h2 style={{ fontSize: 15, fontWeight: 600, color: '#e6edf3', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>📦</span> Livrables attendus
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
-                {projet.livrables?.map((l, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#1a3a2a', border: '1px solid #3fb950', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#3fb950', flexShrink: 0 }}>✓</span>
-                    <span style={{ fontSize: 13, color: '#c9d1d9' }}>{l}</span>
-                  </div>
-                ))}
+          {/* ── Colonne droite — desktop uniquement ── */}
+          {!isMobile && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ background: '#161b22', border: '1px solid #21262d', borderRadius: 12, padding: 20, position: 'sticky', top: 80 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 600, color: '#e6edf3', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  📦 Livrables attendus
+                </h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                  {projet.livrables?.map((l, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#0d1117', borderRadius: 8, border: '1px solid #21262d' }}>
+                      <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#1a3a2a', border: '1px solid #3fb950', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#3fb950', flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: 13, color: '#c9d1d9' }}>{l}</span>
+                    </div>
+                  ))}
+                </div>
+                <button style={{ width: '100%', padding: 12, background: '#1f6feb', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = '#388bfd'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#1f6feb'}>
+                  🚀 Commencer le projet
+                </button>
+                <p style={{ fontSize: 11, color: '#7d8590', textAlign: 'center', marginTop: 10 }}>
+                  Par {projet.profNom || "L'équipe pédagogique"}
+                </p>
               </div>
-              <button style={{ width: '100%', padding: 12, background: '#1f6feb', border: 'none', borderRadius: 10, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#388bfd'}
-                onMouseLeave={e => e.currentTarget.style.background = '#1f6feb'}>
-                🚀 Commencer le projet
-              </button>
-              <p style={{ fontSize: 11, color: '#7d8590', textAlign: 'center', marginTop: 10 }}>
-                Par {projet.profNom || "L'équipe pédagogique"}
-              </p>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

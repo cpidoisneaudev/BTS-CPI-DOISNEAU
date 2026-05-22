@@ -402,9 +402,10 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
 // ✅ Ajout de la prop ressourcesCount
 function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile, ressourcesCount }) {
   return (
-    <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24 }}>
-      <div style={{ width: isMobile ? "100%" : 140, height: isMobile ? 160 : 180, borderRadius: 10, background: "#0d1117", border: "1px solid #30363d", overflow: "hidden", flexShrink: 0 }}>
-        {projet.image ? <img src={projet.image} alt={projet.titre} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>🔧</div>}
+    <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
+      {/* ✅ Image contrainte : largeur fixe, hauteur auto-limitée par alignSelf */}
+      <div style={{ width: isMobile ? "100%" : 140, height: isMobile ? 200 : 150, borderRadius: 10, background: "#0d1117", border: "1px solid #30363d", overflow: "hidden", flexShrink: 0, alignSelf: isMobile ? "auto" : "flex-start" }}>
+        {projet.image ? <img src={projet.image} alt={projet.titre} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>🔧</div>}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
