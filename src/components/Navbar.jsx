@@ -48,7 +48,7 @@ const privateLinks = [
   { href: '/equipe', label: 'Équipe' },
   { href: '/logiciels', label: 'Logiciels' },
   { href: '/stages', label: 'Stage' },
-  { href: '/projet', label: 'Projet' },
+  { href: '/dashboard/projet', label: 'Projet' },
 ];
 
   const handleLogout = async () => {
