@@ -1,4 +1,4 @@
-// /logiciels/page.js - VERSION CORRIGÉE
+// /logiciels/page.js - VERSION CORRIGÉE — collection projetsAtelier séparée
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -51,6 +51,7 @@ function niveauColor(niveau) {
 }
 
 // ── Modal Ajout Projet (4 étapes) ─────────────────────────────────────────────
+// ✅ CORRIGÉ : utilise "projetsAtelier" au lieu de "projets"
 function ModalAjoutProjet({ projet, onClose, user, userData }) {
   const isEdit = !!projet;
   const [etape, setEtape] = useState(1);
@@ -70,6 +71,7 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
   });
 
   const [newRessource, setNewRessource] = useState({ titre: "", type: "youtube", url: "", nom: "" });
+  const [tempRessources, setTempRessources] = useState([]);
 
   const inp = {
     width: "100%", padding: "8px 12px", background: "#0d1117",
@@ -120,9 +122,6 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
     return { ...f, travaux: t };
   });
 
-  // ✅ Ressources temporaires pour l'étape 4 (affichage seul — sauvegarde via sous-collection)
-  const [tempRessources, setTempRessources] = useState([]);
-
   const addRessource = () => {
     if (!newRessource.titre.trim()) { alert("Titre requis"); return; }
     if (!newRessource.url.trim()) {
@@ -135,6 +134,7 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
 
   const removeRessource = (i) => setTempRessources(r => r.filter((_, idx) => idx !== i));
 
+  // ✅ CORRIGÉ : "projetsAtelier" partout
   const handleSave = async () => {
     if (!form.titre.trim()) { alert("Titre requis"); return; }
     setSaving(true);
@@ -155,23 +155,25 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
 
       let projetId;
       if (isEdit) {
-        await updateDoc(doc(db, "projets", projet.id), data);
+        // ✅ CORRIGÉ
+        await updateDoc(doc(db, "projetsAtelier", projet.id), data);
         projetId = projet.id;
       } else {
-        const ref = await addDoc(collection(db, "projets"), { ...data, createdAt: serverTimestamp() });
+        // ✅ CORRIGÉ
+        const ref = await addDoc(collection(db, "projetsAtelier"), { ...data, createdAt: serverTimestamp() });
         projetId = ref.id;
       }
 
-      // ✅ Sauvegarder les ressources dans la sous-collection
+      // ✅ CORRIGÉ : sous-collection dans projetsAtelier
       if (tempRessources.length > 0) {
         await Promise.all(
           tempRessources.map(r =>
-            addDoc(collection(db, "projets", projetId, "ressources"), {
+            addDoc(collection(db, "projetsAtelier", projetId, "ressources"), {
               titre: r.titre,
               type: r.type,
               url: r.url,
               niveau: "Débutant",
-              duree: r.type === "youtube" ? "" : "",
+              duree: "",
               pages: "",
               profId: user.uid,
               profNom: `${userData?.prenom} ${userData?.nom}`,
@@ -324,7 +326,7 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
             </>
           )}
 
-          {/* ✅ Étape 4 : Ressources — sauvegardées dans sous-collection */}
+          {/* Étape 4 : Ressources */}
           {etape === 4 && (
             <>
               <p style={{ fontSize: 12, color: "#8b949e" }}>Ajoutez les ressources fournies aux étudiants :</p>
@@ -399,11 +401,9 @@ function ModalAjoutProjet({ projet, onClose, user, userData }) {
 }
 
 // ── Card Projet ────────────────────────────────────────────────────────────────
-// ✅ Ajout de la prop ressourcesCount
 function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile, ressourcesCount }) {
   return (
     <div style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, padding: isMobile ? 16 : 20, display: "flex", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 16 : 24, alignItems: "flex-start" }}>
-      {/* ✅ Image contrainte : largeur fixe, hauteur auto-limitée par alignSelf */}
       <div style={{ width: isMobile ? "100%" : 140, height: isMobile ? 200 : 150, borderRadius: 10, background: "#0d1117", border: "1px solid #30363d", overflow: "hidden", flexShrink: 0, alignSelf: isMobile ? "auto" : "flex-start" }}>
         {projet.image ? <img src={projet.image} alt={projet.titre} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 40 }}>🔧</div>}
       </div>
@@ -422,7 +422,6 @@ function ProjetCard({ projet, isProf, onEdit, onDelete, onStart, isMobile, resso
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 14 }}>
           {[
             { icon: "⏱", label: "Durée", val: projet.duree, color: "#e6edf3" },
-            // ✅ ressourcesCount depuis la sous-collection Firestore
             { icon: "📁", label: "Ressources", val: ressourcesCount, color: "#e6edf3" },
             { icon: "📊", label: "Niveau", val: projet.niveau, color: niveauColor(projet.niveau) }
           ].map(({ icon, label, val, color }) => (
@@ -769,9 +768,9 @@ export default function LogicielsPage() {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [mounted, setMounted] = useState(false);
 
+  // ✅ CORRIGÉ : projetsAtelier (séparé de la collection "projets" des étudiants)
   const [projets, setProjets] = useState([]);
   const [loadingProjets, setLoadingProjets] = useState(true);
-  // ✅ NOUVEAU : compteurs de ressources depuis les sous-collections
   const [ressourcesCounts, setRessourcesCounts] = useState({});
   const [showModalProjet, setShowModalProjet] = useState(false);
   const [editingProjet, setEditingProjet] = useState(null);
@@ -797,21 +796,21 @@ export default function LogicielsPage() {
     return () => unsub();
   }, []);
 
-  // ✅ MODIFIÉ : charge les projets ET les compteurs de ressources depuis les sous-collections
+  // ✅ CORRIGÉ : lit "projetsAtelier" au lieu de "projets"
   useEffect(() => {
     const unsub = onSnapshot(
-      query(collection(db, "projets"), orderBy("createdAt", "desc")),
+      query(collection(db, "projetsAtelier"), orderBy("createdAt", "desc")),
       async (snap) => {
         const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setProjets(isProf ? data : data.filter(p => p.statut === "publié"));
         setLoadingProjets(false);
 
-        // Charger les compteurs de ressources depuis les sous-collections en parallèle
+        // ✅ CORRIGÉ : sous-collection dans projetsAtelier
         const counts = {};
         await Promise.all(
           data.map(async (projet) => {
             try {
-              const rSnap = await getDocs(collection(db, "projets", projet.id, "ressources"));
+              const rSnap = await getDocs(collection(db, "projetsAtelier", projet.id, "ressources"));
               counts[projet.id] = rSnap.size;
             } catch {
               counts[projet.id] = 0;
@@ -830,8 +829,9 @@ export default function LogicielsPage() {
     setConfirmDelete(null);
   };
 
+  // ✅ CORRIGÉ : supprime dans "projetsAtelier"
   const handleDeleteProjet = async (projet) => {
-    try { await deleteDoc(doc(db, "projets", projet.id)); }
+    try { await deleteDoc(doc(db, "projetsAtelier", projet.id)); }
     catch (e) { console.error(e); alert("Erreur suppression projet"); }
     setConfirmDeleteProjet(null);
   };
@@ -964,7 +964,7 @@ export default function LogicielsPage() {
           )}
         </div>
 
-        {/* PROJETS À RÉALISER */}
+        {/* PROJETS À RÉALISER — collection projetsAtelier */}
         <div style={{ marginBottom: 36 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <h2 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 500, color: "#e6edf3" }}>
@@ -999,11 +999,10 @@ export default function LogicielsPage() {
                   projet={projet}
                   isProf={isProf}
                   isMobile={isMobile}
-                  // ✅ Compteur réel depuis la sous-collection Firestore
                   ressourcesCount={ressourcesCounts[projet.id] ?? 0}
                   onEdit={(p) => { setEditingProjet(p); setShowModalProjet(true); }}
                   onDelete={(p) => setConfirmDeleteProjet(p)}
-                  onStart={(id) => router.push(`/projet/${id}`)}
+                  onStart={(id) => router.push(`/logiciels/atelier/${id}`)}
                 />
               ))}
             </div>
