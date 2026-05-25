@@ -67,7 +67,7 @@ export default function LogicielsSidebar() {
       <NavLink href="/dashboard/ressources" icon={IconBooks}           label="Mes ressources"   collapsed={collapsed} />
       <NavLink href="/equipe"               icon={IconUsers}           label="Équipe"            collapsed={collapsed} />
       <NavLink href="/stages"               icon={IconBriefcase}       label="Stage"             collapsed={collapsed} />
-      <NavLink href="/projet"               icon={IconFileText}        label="Projet"            collapsed={collapsed} />
+      <NavLink href="/dashboard/projet"               icon={IconFileText}        label="Projet"            collapsed={collapsed} />
       <NavLink href="/calendrier"           icon={IconCalendar}        label="Calendrier"        collapsed={collapsed} />
       <NavLink href="/messages"             icon={IconMessage}         label="Messages"          collapsed={collapsed} />
 
