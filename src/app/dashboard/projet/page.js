@@ -10,7 +10,6 @@ import {
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/AuthContext";
 
-// ── Media Query Hook ───────────────────────────────────────────────────────────
 function useMediaQuery(q) {
   const [matches, setMatches] = useState(false);
   useEffect(() => {
@@ -23,7 +22,6 @@ function useMediaQuery(q) {
   return matches;
 }
 
-// ── Couleurs par type de projet ────────────────────────────────────────────────
 function typeBadgeStyle(type) {
   if (type === "Prototypage")       return { background: "rgba(31,107,235,0.18)", color: "#58a6ff", border: "1px solid rgba(31,107,235,0.35)" };
   if (type === "Collaboratif CPRP") return { background: "rgba(224,123,57,0.18)", color: "#e07b39", border: "1px solid rgba(224,123,57,0.35)" };
@@ -37,7 +35,6 @@ function niveauBadge(niveau) {
   return                                 { background: "#3a1a1a", color: "#f85149" };
 }
 
-// ── Upload image Cloudinary ────────────────────────────────────────────────────
 async function uploadImageCloudinary(file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -51,11 +48,8 @@ async function uploadImageCloudinary(file) {
   return data.secure_url;
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ── MODAL AJOUT PROJET ────────────────────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════════════════════
 function ModalAjoutProjet({ onClose, onSuccess, userData }) {
-  const [etape, setEtape] = useState(1); // 1=Infos, 2=Détails, 3=Livrables
+  const [etape, setEtape] = useState(1);
   const [saving, setSaving] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -109,7 +103,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
     try {
       let imageUrl = "";
       if (imageFile) imageUrl = await uploadImageCloudinary(imageFile);
-
       await addDoc(collection(db, "projets"), {
         ...form,
         image: imageUrl,
@@ -126,7 +119,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
     }
   };
 
-  // Styles communs
   const inputStyle = {
     width: "100%", padding: "9px 12px", borderRadius: 8, fontSize: 13,
     background: "#0d1117", border: "1px solid #30363d", color: "#e6edf3",
@@ -153,7 +145,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 16, width: "100%", maxWidth: 540, maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
 
-        {/* Header */}
         <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e6edf3", margin: 0 }}>Ajouter un projet étudiant</h2>
@@ -162,18 +153,14 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#8b949e", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>✕</button>
         </div>
 
-        {/* Progress bar */}
         <div style={{ height: 3, background: "#21262d" }}>
           <div style={{ height: "100%", background: "#1f6feb", width: `${(etape / 3) * 100}%`, transition: "width 0.3s ease", borderRadius: 2 }} />
         </div>
 
-        {/* Corps scrollable */}
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
-          {/* ── ÉTAPE 1 : Informations ── */}
           {etape === 1 && (
             <div>
-              {/* Type de projet */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Type de projet *</label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -189,14 +176,10 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                   })}
                 </div>
               </div>
-
-              {/* Titre */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Titre du projet *</label>
                 <input style={inputStyle} value={form.titre} onChange={e => set("titre", e.target.value)} placeholder="Ex: Bras articulé Pick & Place" />
               </div>
-
-              {/* Année + Groupe */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div>
                   <label style={labelStyle}>Année scolaire</label>
@@ -212,8 +195,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                   </select>
                 </div>
               </div>
-
-              {/* Niveau */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Niveau de difficulté</label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -229,8 +210,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                   })}
                 </div>
               </div>
-
-              {/* Statut */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Visibilité</label>
                 <div style={{ display: "flex", gap: 8 }}>
@@ -245,22 +224,16 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
             </div>
           )}
 
-          {/* ── ÉTAPE 2 : Détails ── */}
           {etape === 2 && (
             <div>
-              {/* Description */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Description *</label>
                 <textarea style={{ ...inputStyle, height: 90, resize: "vertical" }} value={form.description} onChange={e => set("description", e.target.value)} placeholder="Décrivez le projet, son contexte et ses objectifs..." />
               </div>
-
-              {/* Durée */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Durée</label>
                 <input style={inputStyle} value={form.duree} onChange={e => set("duree", e.target.value)} placeholder="Ex: 6 semaines, 3 mois, 1 semestre..." />
               </div>
-
-              {/* Image */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Image du projet</label>
                 <div style={{ border: "1px dashed #30363d", borderRadius: 10, padding: 16, textAlign: "center", cursor: "pointer", background: "#0d1117", position: "relative" }}
@@ -268,11 +241,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                   {imagePreview ? (
                     <div style={{ position: "relative" }}>
                       <img src={imagePreview} alt="preview" style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: 8, display: "block" }} />
-                      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.2s" }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = "1"}
-                        onMouseLeave={e => e.currentTarget.style.opacity = "0"}>
-                        <span style={{ color: "#fff", fontSize: 12 }}>Changer l'image</span>
-                      </div>
                     </div>
                   ) : (
                     <>
@@ -287,10 +255,8 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
             </div>
           )}
 
-          {/* ── ÉTAPE 3 : Livrables & Travaux ── */}
           {etape === 3 && (
             <div>
-              {/* Livrables */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Livrables attendus</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -298,9 +264,7 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                     onKeyDown={e => e.key === "Enter" && addLivrable()}
                     placeholder="Ex: Dossier de conception CAO..." />
                   <button onClick={addLivrable}
-                    style={{ padding: "9px 14px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                    +
-                  </button>
+                    style={{ padding: "9px 14px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>+</button>
                 </div>
                 {form.livrables.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -313,12 +277,8 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                     ))}
                   </div>
                 )}
-                {form.livrables.length === 0 && (
-                  <p style={{ fontSize: 11, color: "#484f58", margin: 0 }}>Aucun livrable ajouté — appuyez sur Entrée ou cliquez sur +</p>
-                )}
+                {form.livrables.length === 0 && <p style={{ fontSize: 11, color: "#484f58", margin: 0 }}>Aucun livrable ajouté</p>}
               </div>
-
-              {/* Travaux à réaliser */}
               <div style={fieldStyle}>
                 <label style={labelStyle}>Travaux à réaliser</label>
                 <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -326,9 +286,7 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                     onKeyDown={e => e.key === "Enter" && addTravail()}
                     placeholder="Ex: Modélisation 3D sous SolidWorks..." />
                   <button onClick={addTravail}
-                    style={{ padding: "9px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>
-                    +
-                  </button>
+                    style={{ padding: "9px 14px", borderRadius: 8, background: "#21262d", border: "1px solid #30363d", color: "#e6edf3", fontSize: 13, cursor: "pointer", fontWeight: 600, flexShrink: 0 }}>+</button>
                 </div>
                 {form.travaux.length > 0 && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -341,12 +299,8 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
                     ))}
                   </div>
                 )}
-                {form.travaux.length === 0 && (
-                  <p style={{ fontSize: 11, color: "#484f58", margin: 0 }}>Aucun travail ajouté</p>
-                )}
+                {form.travaux.length === 0 && <p style={{ fontSize: 11, color: "#484f58", margin: 0 }}>Aucun travail ajouté</p>}
               </div>
-
-              {/* Récap */}
               <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 10, padding: "12px 14px" }}>
                 <p style={{ fontSize: 11, color: "#7d8590", fontWeight: 600, textTransform: "uppercase", marginBottom: 8 }}>Récapitulatif</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -368,7 +322,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
           )}
         </div>
 
-        {/* Footer navigation */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid #21262d", display: "flex", gap: 10, justifyContent: "space-between" }}>
           <button onClick={() => etape > 1 ? setEtape(e => e - 1) : onClose()}
             style={{ padding: "9px 18px", borderRadius: 8, background: "transparent", border: "1px solid #30363d", color: "#8b949e", fontSize: 13, cursor: "pointer", fontWeight: 500 }}>
@@ -382,7 +335,7 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={saving || !form.description.trim()}
-              style={{ padding: "9px 22px", borderRadius: 8, background: saving ? "#21262d" : "#1f6feb", border: "none", color: saving ? "#484f58" : "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+              style={{ padding: "9px 22px", borderRadius: 8, background: saving ? "#21262d" : "#1f6feb", border: "none", color: saving ? "#484f58" : "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer" }}>
               {saving ? "Enregistrement..." : "✓ Publier le projet"}
             </button>
           )}
@@ -392,9 +345,6 @@ function ModalAjoutProjet({ onClose, onSuccess, userData }) {
   );
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-// ── PAGE PRINCIPALE ───────────────────────────────────────────────────────────
-// ══════════════════════════════════════════════════════════════════════════════
 export default function DashboardProjetPage() {
   const { user, userData } = useAuth();
   const router = useRouter();
@@ -406,6 +356,7 @@ export default function DashboardProjetPage() {
   const [filtreActif, setFiltreActif] = useState("Tous");
   const [showModal, setShowModal] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
+  const [typeSelectionne, setTypeSelectionne] = useState(null);
 
   const isProf = userData?.role === "PROF" || userData?.role === "ADMIN";
 
@@ -420,7 +371,6 @@ export default function DashboardProjetPage() {
         const visibles = isProf ? data : data.filter(p => p.statut === "publié");
         setProjets(visibles);
         setLoadingProjets(false);
-        // Compter ressources
         const counts = {};
         await Promise.all(data.map(async (p) => {
           try {
@@ -438,50 +388,149 @@ export default function DashboardProjetPage() {
 
   const FILTRES = ["Tous", "Prototypage", "Collaboratif CPRP", "Projet final"];
 
-  // Filtrer les projets selon filtre actif
   const projetsFiltres = filtreActif === "Tous"
     ? projets
     : projets.filter(p => p.type === filtreActif);
+	const projetsAffiches = projetsFiltres.slice(0, 8);
 
   const handleSuccess = () => {
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
   };
 
+  // ✅ CONTENU DES 3 TYPES DE PROJETS + CONSIGNES + GRILLES
   const TYPES_INFO = [
     {
+      type: "Prototypage",
       icon: "🖨️",
       titre: "Projet de prototypage",
+      sousTitre: "U61 — Prototypage et industrialisation",
       desc: "Conception, fabrication de pièces, assemblage et tests pour valider la faisabilité.",
+      contexte: "L'étudiant doit concevoir ou adapter une pièce ou un sous-ensemble mécanique, réaliser un prototype physique, puis vérifier son fonctionnement par des essais simples.",
+      objectif: "Réaliser, tester et améliorer un prototype fonctionnel.",
+      duree: "Projet court",
+      coefficient: "2",
+      mode: "Individuel ou binôme",
+      missions: [
+        "Analyser le besoin et les contraintes du prototype",
+        "Proposer une ou plusieurs solutions techniques",
+        "Préparer la maquette numérique pour la fabrication",
+        "Réaliser le prototype par impression 3D, usinage ou assemblage",
+        "Tester le prototype et proposer des améliorations",
+        "Présenter les résultats obtenus"
+      ],
+      livrables: [
+        "Cahier des charges simplifié",
+        "Croquis ou schémas de principe",
+        "Maquette numérique 3D",
+        "Fichier de fabrication ou dossier atelier",
+        "Photos du prototype",
+        "Compte rendu des essais"
+      ],
+      grille: [
+        ["Analyse du besoin", "Compréhension du besoin, contraintes identifiées, objectifs du prototype", 4],
+        ["Solutions proposées", "Pertinence, créativité et justification des choix techniques", 4],
+        ["Maquette CAO", "Qualité du modèle 3D, respect des contraintes, préparation fabrication", 5],
+        ["Réalisation du prototype", "Qualité de fabrication, assemblage, finition, sécurité", 5],
+        ["Tests et améliorations", "Essais réalisés, analyse des résultats, propositions correctives", 4],
+        ["Dossier rendu", "Clarté, organisation, photos, fichiers et documents fournis", 4],
+        ["Présentation orale", "Explication claire, vocabulaire technique, réponses aux questions", 4]
+      ],
       tags: ["Impression 3D", "Assemblage", "Tests"],
       tagColor: "#58a6ff", tagBg: "rgba(31,107,235,0.2)",
-      image: "https://images.unsplash.com/photo-1563520239648-a8f4b43d3b19?w=600&q=80",
+      image: "/prototypage.jpg",
       accent: "#1f6feb", iconBg: "#1f3a5f",
     },
     {
+      type: "Collaboratif CPRP",
       icon: "🤝",
       titre: "Projet collaboratif avec CPRP",
+      sousTitre: "U62 — Projet collaboratif d’optimisation",
       desc: "Collaboration avec les techniciens d'usinage (CPRP) pour concevoir et fabriquer des sous-ensembles.",
+      contexte: "L'étudiant doit collaborer avec les techniciens CPRP afin d’optimiser une pièce ou un mécanisme selon la relation produit / matériau / procédé / coût.",
+      objectif: "Optimiser une solution en tenant compte de la fabrication, du coût et du procédé.",
+      duree: "Séquence collaborative",
+      coefficient: "3",
+      mode: "Équipe CPI + CPRP",
+      missions: [
+        "Analyser la pièce ou le sous-ensemble à optimiser",
+        "Identifier les contraintes de fabrication et de contrôle",
+        "Comparer plusieurs procédés ou solutions de réalisation",
+        "Adapter la conception selon les retours fabrication",
+        "Justifier le choix matériau / procédé / coût",
+        "Formaliser les échanges et décisions de l’équipe projet"
+      ],
+      livrables: [
+        "Analyse du besoin et contraintes de réalisation",
+        "Tableau comparatif des procédés",
+        "Maquette CAO modifiée",
+        "Justification matériau / procédé / coût",
+        "Compte rendu collaboratif CPI-CPRP",
+        "Conclusion sur l’optimisation retenue"
+      ],
+      grille: [
+        ["Analyse des contraintes", "Contraintes techniques, économiques, procédés et délais identifiées", 4],
+        ["Travail collaboratif", "Qualité des échanges, prise en compte des avis CPRP, traçabilité", 5],
+        ["Choix procédé / matériau", "Choix justifié et compatible avec la fonction de la pièce", 5],
+        ["Optimisation technique", "Amélioration de la solution selon coût, qualité, délai", 5],
+        ["Éco-conception", "Prise en compte matière, déchets, cycle de vie ou impact environnemental", 3],
+        ["Dossier technique", "Documents clairs, comparatifs, CAO et synthèse de décision", 4],
+        ["Présentation orale", "Argumentation technique et réponse aux questions", 4]
+      ],
       tags: ["CAO", "Usinage CNC", "Métrologie"],
       tagColor: "#e07b39", tagBg: "rgba(224,123,57,0.2)",
-      image: "https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?w=600&q=80",
+      image: "/collaboratif.jpg",
       accent: "#e07b39", iconBg: "#3a2010",
     },
     {
+      type: "Projet final",
       icon: "🏆",
       titre: "Projet final U51 (6 mois)",
+      sousTitre: "U51 — Conception détaillée",
       desc: "Projet industriel complet répondant à un besoin réel d'entreprise ou de centre de recherche.",
+      contexte: "L'étudiant doit concevoir, dimensionner et valider une solution technique complète répondant à un besoin industriel réel. Le projet doit intégrer toutes les étapes de conception jusqu’à la définition détaillée et la présentation finale.",
+      objectif: "Concevoir, dimensionner, valider et présenter une solution complète.",
+      duree: "6 mois",
+      coefficient: "5",
+      mode: "Individuel ou équipe projet",
+      missions: [
+        "Analyser le besoin et le cahier des charges",
+        "Proposer et justifier des solutions techniques",
+        "Concevoir la maquette 3D et l’assemblage",
+        "Dimensionner les éléments critiques et valider par calcul ou simulation",
+        "Produire les plans de définition et le dossier technique",
+        "Présenter et défendre le projet"
+      ],
+      livrables: [
+        "Cahier des charges / analyse fonctionnelle",
+        "Maquette numérique 3D complète",
+        "Notes de calcul et simulations",
+        "Plans cotés et tolérancés",
+        "Dossier technique complet",
+        "Présentation orale de soutenance"
+      ],
+      grille: [
+        ["Analyse du besoin", "Compréhension du besoin, analyse fonctionnelle, cahier des charges", 4],
+        ["Solutions proposées", "Pertinence, créativité et justification des solutions techniques retenues", 4],
+        ["Maquette CAO / assemblage", "Qualité de la maquette 3D, structure d’assemblage, respect des contraintes", 5],
+        ["Dimensionnement / simulation", "Justesse des calculs, validation par simulation, cohérence des résultats", 4],
+        ["Choix matériau / procédé / coût", "Pertinence des choix techniques, prise en compte du coût et des procédés", 3],
+        ["Plans et dossier technique", "Qualité des plans, cotation, tolérances, clarté du dossier technique", 5],
+        ["Présentation orale", "Clarté, structuration du discours, réponses aux questions", 5]
+      ],
       tags: ["CAO avancée", "Simulation", "Soutenance"],
       tagColor: "#9d95e8", tagBg: "rgba(157,149,232,0.2)",
-      image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&q=80",
+      image: "/projetU51.jpg",
       accent: "#9d95e8", iconBg: "#1a1a3a",
     },
   ];
 
+  const typeSelectionneData = TYPES_INFO.find(t => t.type === typeSelectionne);
+  const totalGrille = typeSelectionneData?.grille?.reduce((s, row) => s + row[2], 0) || 0;
+
   return (
     <div style={{ minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "sans-serif", overflowX: "hidden" }}>
 
-      {/* ── MODAL ── */}
       {showModal && (
         <ModalAjoutProjet
           onClose={() => setShowModal(false)}
@@ -490,7 +539,6 @@ export default function DashboardProjetPage() {
         />
       )}
 
-      {/* ── Toast succès ── */}
       {successMsg && (
         <div style={{ position: "fixed", top: 80, right: 20, zIndex: 999, background: "#1a3a2a", border: "1px solid #3fb950", borderRadius: 10, padding: "12px 18px", color: "#3fb950", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 20px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 8 }}>
           ✓ Projet ajouté avec succès !
@@ -499,13 +547,10 @@ export default function DashboardProjetPage() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "16px 12px" : "32px 24px", boxSizing: "border-box", width: "100%" }}>
 
-        {/* ══ HERO — image plein fond ══ */}
+        {/* HERO */}
         <div style={{ borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 28, minHeight: isMobile ? 260 : 320 }}>
-          {/* Image de fond */}
           <div style={{ position: "absolute", inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
-          {/* Overlay gradient */}
           <div style={{ position: "absolute", inset: 0, background: isMobile ? "rgba(13,17,23,0.85)" : "linear-gradient(90deg, rgba(13,17,23,0.97) 0%, rgba(13,17,23,0.85) 55%, rgba(13,17,23,0.35) 100%)", zIndex: 1 }} />
-          {/* Contenu */}
           <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "28px 20px" : "52px 44px", maxWidth: 600 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(31,107,235,0.2)", border: "1px solid rgba(31,107,235,0.4)", borderRadius: 99, padding: "4px 12px", fontSize: 10, color: "#58a6ff", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>
               🎓 Projets BTS CPI
@@ -526,7 +571,6 @@ export default function DashboardProjetPage() {
                 <span key={label} style={{ display: "inline-flex", alignItems: "center", padding: "5px 12px", fontSize: 11, color, background: bg, borderRadius: 99, border: `1px solid ${color}33`, fontWeight: 500 }}>{label}</span>
               ))}
             </div>
-            {/* Stats rapides */}
             <div style={{ display: "flex", gap: isMobile ? 16 : 28, flexWrap: "wrap" }}>
               {[
                 { val: projets.length, label: "Projets" },
@@ -542,7 +586,7 @@ export default function DashboardProjetPage() {
           </div>
         </div>
 
-        {/* ══ 3 TYPES DE PROJETS ══ */}
+        {/* 3 TYPES DE PROJETS */}
         <div style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
             <div style={{ width: 4, height: 18, background: "#1f6feb", borderRadius: 2 }} />
@@ -551,9 +595,13 @@ export default function DashboardProjetPage() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
             {TYPES_INFO.map((type, i) => (
               <div key={i}
-                style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #21262d", cursor: "pointer", transition: "border-color 0.2s, transform 0.2s", position: "relative", minHeight: isMobile ? 170 : 210 }}
+                onClick={() => {
+                  setTypeSelectionne(type.type);
+                  setFiltreActif(type.type);
+                }}
+                style={{ borderRadius: 14, overflow: "hidden", border: typeSelectionne === type.type ? `1px solid ${type.accent}` : "1px solid #21262d", cursor: "pointer", transition: "border-color 0.2s, transform 0.2s", position: "relative", minHeight: isMobile ? 170 : 210, boxShadow: typeSelectionne === type.type ? `0 0 0 1px ${type.accent}55, 0 12px 34px ${type.accent}22` : "none" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = type.accent; e.currentTarget.style.transform = "translateY(-3px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "#21262d"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                onMouseLeave={e => { e.currentTarget.style.borderColor = typeSelectionne === type.type ? type.accent : "#21262d"; e.currentTarget.style.transform = "translateY(0)"; }}>
                 <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${type.image}')`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(13,17,23,0.95) 0%, rgba(13,17,23,0.6) 100%)", zIndex: 1 }} />
                 <div style={{ position: "relative", zIndex: 2, padding: isMobile ? 16 : 20 }}>
@@ -573,18 +621,163 @@ export default function DashboardProjetPage() {
           </div>
         </div>
 
-        {/* ══ PROJETS RÉALISÉS ══ */}
-        <div style={{ marginBottom: 28 }}>
 
-          {/* Header : titre + bouton ajouter (PROF) */}
+        {/* DÉTAIL DU TYPE SÉLECTIONNÉ : CONSIGNE + GRILLE */}
+        {typeSelectionneData && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{
+              borderRadius: 18,
+              overflow: "hidden",
+              border: `1px solid ${typeSelectionneData.accent}55`,
+              background: "#161b22",
+              boxShadow: `0 18px 55px ${typeSelectionneData.accent}18`
+            }}>
+              <div style={{ position: "relative", minHeight: isMobile ? 220 : 260, overflow: "hidden" }}>
+                <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${typeSelectionneData.image}')`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
+                <div style={{ position: "absolute", inset: 0, background: isMobile ? "rgba(13,17,23,0.92)" : `linear-gradient(90deg, rgba(13,17,23,0.98) 0%, rgba(13,17,23,0.88) 55%, ${typeSelectionneData.accent}33 100%)`, zIndex: 1 }} />
+                <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "22px 18px" : "32px 34px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 18 }}>
+                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <div style={{ width: 58, height: 58, borderRadius: 16, background: typeSelectionneData.iconBg, border: `1px solid ${typeSelectionneData.accent}66`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
+                        {typeSelectionneData.icon}
+                      </div>
+                      <div>
+                        <div style={{ display: "inline-flex", padding: "5px 12px", borderRadius: 8, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, fontSize: 11, fontWeight: 800, marginBottom: 10 }}>
+                          {typeSelectionneData.sousTitre}
+                        </div>
+                        <h2 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "#e6edf3", margin: "0 0 8px", lineHeight: 1.15 }}>
+                          {typeSelectionneData.titre}
+                        </h2>
+                        <p style={{ color: "#c9d1d9", fontSize: isMobile ? 12 : 14, lineHeight: 1.7, maxWidth: 720, margin: 0 }}>
+                          {typeSelectionneData.objectif}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+  onClick={() => {
+    setTypeSelectionne(null);
+    setFiltreActif("Tous");
+  }}
+  title="Fermer"
+  style={{
+    position: "absolute",
+    top: 18,
+    right: 18,
+    zIndex: 20,
+    width: 42,
+    height: 42,
+    borderRadius: "50%",
+    background: "#f85149",
+    border: "2px solid rgba(255,255,255,0.35)",
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: 800,
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 8px 28px rgba(248,81,73,0.45)"
+  }}
+>
+  ×
+</button>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+                    {[
+                      { icon: "📅", label: "Durée", value: typeSelectionneData.duree },
+                      { icon: "📊", label: "Coefficient", value: typeSelectionneData.coefficient },
+                      { icon: "👥", label: "Organisation", value: typeSelectionneData.mode },
+                    ].map(item => (
+                      <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(13,17,23,0.65)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 12 }}>
+                        <div style={{ width: 34, height: 34, borderRadius: 9, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{item.icon}</div>
+                        <div>
+                          <div style={{ fontSize: 10, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
+                          <div style={{ fontSize: 13, color: "#e6edf3", fontWeight: 700 }}>{item.value}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                    {typeSelectionneData.tags.map(tag => (
+                      <span key={tag} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: typeSelectionneData.tagBg, color: typeSelectionneData.tagColor, fontWeight: 700, border: `1px solid ${typeSelectionneData.accent}33` }}>{tag}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ padding: isMobile ? 16 : 22, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "0.95fr 1.05fr", gap: 16 }}>
+                <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: isMobile ? 16 : 20 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>🧭 Contexte</h3>
+                  <p style={{ fontSize: 13, color: "#c9d1d9", lineHeight: 1.8, marginBottom: 18 }}>{typeSelectionneData.contexte}</p>
+
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 12 }}>🎯 Mission</h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
+                    {typeSelectionneData.missions.map((m, idx) => (
+                      <div key={idx} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+                        <span style={{ width: 20, height: 20, borderRadius: "50%", background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>✓</span>
+                        <span style={{ color: "#c9d1d9", fontSize: 13, lineHeight: 1.5 }}>{m}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 12 }}>📦 Livrables attendus</h3>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8 }}>
+                    {typeSelectionneData.livrables.map((l, idx) => (
+                      <div key={idx} style={{ padding: "8px 10px", borderRadius: 8, background: "#161b22", border: "1px solid #21262d", color: "#c9d1d9", fontSize: 12 }}>
+                        📄 {l}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: isMobile ? 14 : 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3" }}>▦ Grille d’évaluation</h3>
+                    <span style={{ padding: "5px 10px", borderRadius: 99, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, fontSize: 12, fontWeight: 800 }}>
+                      Total /{totalGrille}
+                    </span>
+                  </div>
+
+                  <div style={{ overflowX: "auto", border: "1px solid #30363d", borderRadius: 12 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
+                      <thead>
+                        <tr style={{ background: "#161b22" }}>
+                          <th style={{ textAlign: "left", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Critère</th>
+                          <th style={{ textAlign: "left", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Attendus</th>
+                          <th style={{ textAlign: "center", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {typeSelectionneData.grille.map((row, idx) => (
+                          <tr key={idx}>
+                            <td style={{ padding: "11px 12px", color: "#e6edf3", fontSize: 12, fontWeight: 700, borderBottom: "1px solid #21262d" }}>{row[0]}</td>
+                            <td style={{ padding: "11px 12px", color: "#8b949e", fontSize: 12, lineHeight: 1.45, borderBottom: "1px solid #21262d" }}>{row[1]}</td>
+                            <td style={{ padding: "11px 12px", color: typeSelectionneData.accent, fontSize: 13, fontWeight: 900, textAlign: "center", borderBottom: "1px solid #21262d" }}>/{row[2]}</td>
+                          </tr>
+                        ))}
+                        <tr style={{ background: "#161b22" }}>
+                          <td colSpan={2} style={{ padding: "13px 12px", color: "#e6edf3", fontWeight: 900, fontSize: 13 }}>TOTAL</td>
+                          <td style={{ padding: "13px 12px", color: "#e6edf3", fontWeight: 900, fontSize: 15, textAlign: "center" }}>/{totalGrille}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PROJETS RÉALISÉS */}
+        <div style={{ marginBottom: 28 }}>
           <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 4, height: 18, background: "#1f6feb", borderRadius: 2 }} />
               <h2 style={{ fontSize: isMobile ? 14 : 17, fontWeight: 700, color: "#e6edf3" }}>
                 Projets réalisés{" "}
-                <span style={{ fontSize: 11, color: "#7d8590", fontWeight: 400 }}>
-                  (années précédentes)
-                </span>
+                <span style={{ fontSize: 11, color: "#7d8590", fontWeight: 400 }}>(années précédentes)</span>
               </h2>
             </div>
             {isProf && (
@@ -597,9 +790,7 @@ export default function DashboardProjetPage() {
             )}
           </div>
 
-          {/* Filtres + bouton "Voir tous les projets" */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            {/* Filtres pills — scroll horizontal sur mobile */}
             <div style={{ display: "flex", gap: 6, overflowX: "auto", flex: 1, paddingBottom: 2 }}>
               {FILTRES.map((f) => (
                 <button key={f} onClick={() => setFiltreActif(f)}
@@ -617,10 +808,9 @@ export default function DashboardProjetPage() {
                 </button>
               ))}
             </div>
-            {/* Bouton "Voir tous les projets →" — masqué sur mobile */}
-            {!isMobile && (
-              <button
-                onClick={() => router.push("/projet/tous")}
+            {!isMobile && projetsFiltres.length > 8 && (
+  <button
+    onClick={() => router.push("/projet/tous")}
                 style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 20, background: "transparent", border: "1px solid #30363d", color: "#8b949e", fontSize: 11, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#58a6ff"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#8b949e"; }}>
@@ -629,7 +819,6 @@ export default function DashboardProjetPage() {
             )}
           </div>
 
-          {/* Grille projets */}
           {loadingProjets ? (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12 }}>
               {[1,2,3,4].map(i => (
@@ -657,7 +846,7 @@ export default function DashboardProjetPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill, minmax(220px,1fr))", gap: isMobile ? 10 : 14 }}>
-              {projetsFiltres.map(projet => {
+              {projetsAffiches.map(projet => {
                 const typeBadge = typeBadgeStyle(projet.type);
                 const niveauStyle = niveauBadge(projet.niveau);
                 return (
@@ -666,30 +855,23 @@ export default function DashboardProjetPage() {
                     style={{ background: "#161b22", border: "1px solid #21262d", borderRadius: 12, overflow: "hidden", cursor: "pointer", transition: "all 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(31,107,235,0.12)"; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = "#21262d"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-
-                    {/* Image */}
                     <div style={{ width: "100%", aspectRatio: "4/3", background: "#0d1117", position: "relative", overflow: "hidden" }}>
                       {projet.image
                         ? <img src={projet.image} alt={projet.titre} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
                         : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30, background: "linear-gradient(135deg,#161b22,#1c2128)" }}>🔧</div>
                       }
-                      {/* Badge TYPE (en bas à gauche) */}
                       {projet.type && (
                         <div style={{ position: "absolute", bottom: 8, left: 8, fontSize: 9, padding: "3px 8px", borderRadius: 4, fontWeight: 700, ...typeBadge }}>
                           {projet.type}
                         </div>
                       )}
-                      {/* Badge niveau (en haut à gauche) */}
                       {projet.niveau && (
                         <div style={{ position: "absolute", top: 8, left: 8, fontSize: 9, padding: "3px 8px", borderRadius: 4, fontWeight: 600, background: niveauStyle.background, color: niveauStyle.color }}>
                           {projet.niveau}
                         </div>
                       )}
-                      {/* Bookmark */}
                       <div style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: 6, background: "rgba(13,17,23,0.7)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: "#8b949e" }}>🔖</div>
                     </div>
-
-                    {/* Infos */}
                     <div style={{ padding: isMobile ? 10 : 12 }}>
                       <h3 style={{ fontSize: isMobile ? 11 : 13, fontWeight: 700, color: "#e6edf3", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{projet.titre}</h3>
                       <p style={{ fontSize: 11, color: "#8b949e", lineHeight: 1.5, marginBottom: 8, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{projet.description}</p>
@@ -711,7 +893,7 @@ export default function DashboardProjetPage() {
           )}
         </div>
 
-        {/* ══ CTA BANNIÈRE ══ */}
+        {/* CTA BANNIÈRE */}
         <div style={{ borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 24, minHeight: isMobile ? 220 : 180 }}>
           <div style={{ position: "absolute", inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?w=1400&q=80')", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: isMobile ? "rgba(13,17,23,0.9)" : "linear-gradient(90deg, rgba(13,17,23,0.96) 45%, rgba(13,17,23,0.5) 100%)", zIndex: 1 }} />
