@@ -356,7 +356,6 @@ export default function DashboardProjetPage() {
   const [filtreActif, setFiltreActif] = useState("Tous");
   const [showModal, setShowModal] = useState(false);
   const [successMsg, setSuccessMsg] = useState(false);
-  const [typeSelectionne, setTypeSelectionne] = useState(null);
 
   const isProf = userData?.role === "PROF" || userData?.role === "ADMIN";
 
@@ -391,142 +390,42 @@ export default function DashboardProjetPage() {
   const projetsFiltres = filtreActif === "Tous"
     ? projets
     : projets.filter(p => p.type === filtreActif);
-	const projetsAffiches = projetsFiltres.slice(0, 8);
 
   const handleSuccess = () => {
     setSuccessMsg(true);
     setTimeout(() => setSuccessMsg(false), 3000);
   };
 
-  // ✅ CONTENU DES 3 TYPES DE PROJETS + CONSIGNES + GRILLES
+  // ✅ IMAGES MODIFIÉES ICI
   const TYPES_INFO = [
     {
-      type: "Prototypage",
       icon: "🖨️",
       titre: "Projet de prototypage",
-      sousTitre: "U61 — Prototypage et industrialisation",
       desc: "Conception, fabrication de pièces, assemblage et tests pour valider la faisabilité.",
-      contexte: "L'étudiant doit concevoir ou adapter une pièce ou un sous-ensemble mécanique, réaliser un prototype physique, puis vérifier son fonctionnement par des essais simples.",
-      objectif: "Réaliser, tester et améliorer un prototype fonctionnel.",
-      duree: "Projet court",
-      coefficient: "2",
-      mode: "Individuel ou binôme",
-      missions: [
-        "Analyser le besoin et les contraintes du prototype",
-        "Proposer une ou plusieurs solutions techniques",
-        "Préparer la maquette numérique pour la fabrication",
-        "Réaliser le prototype par impression 3D, usinage ou assemblage",
-        "Tester le prototype et proposer des améliorations",
-        "Présenter les résultats obtenus"
-      ],
-      livrables: [
-        "Cahier des charges simplifié",
-        "Croquis ou schémas de principe",
-        "Maquette numérique 3D",
-        "Fichier de fabrication ou dossier atelier",
-        "Photos du prototype",
-        "Compte rendu des essais"
-      ],
-      grille: [
-        ["Analyse du besoin", "Compréhension du besoin, contraintes identifiées, objectifs du prototype", 4],
-        ["Solutions proposées", "Pertinence, créativité et justification des choix techniques", 4],
-        ["Maquette CAO", "Qualité du modèle 3D, respect des contraintes, préparation fabrication", 5],
-        ["Réalisation du prototype", "Qualité de fabrication, assemblage, finition, sécurité", 5],
-        ["Tests et améliorations", "Essais réalisés, analyse des résultats, propositions correctives", 4],
-        ["Dossier rendu", "Clarté, organisation, photos, fichiers et documents fournis", 4],
-        ["Présentation orale", "Explication claire, vocabulaire technique, réponses aux questions", 4]
-      ],
       tags: ["Impression 3D", "Assemblage", "Tests"],
       tagColor: "#58a6ff", tagBg: "rgba(31,107,235,0.2)",
       image: "/prototypage.jpg",
       accent: "#1f6feb", iconBg: "#1f3a5f",
     },
     {
-      type: "Collaboratif CPRP",
       icon: "🤝",
       titre: "Projet collaboratif avec CPRP",
-      sousTitre: "U62 — Projet collaboratif d’optimisation",
       desc: "Collaboration avec les techniciens d'usinage (CPRP) pour concevoir et fabriquer des sous-ensembles.",
-      contexte: "L'étudiant doit collaborer avec les techniciens CPRP afin d’optimiser une pièce ou un mécanisme selon la relation produit / matériau / procédé / coût.",
-      objectif: "Optimiser une solution en tenant compte de la fabrication, du coût et du procédé.",
-      duree: "Séquence collaborative",
-      coefficient: "3",
-      mode: "Équipe CPI + CPRP",
-      missions: [
-        "Analyser la pièce ou le sous-ensemble à optimiser",
-        "Identifier les contraintes de fabrication et de contrôle",
-        "Comparer plusieurs procédés ou solutions de réalisation",
-        "Adapter la conception selon les retours fabrication",
-        "Justifier le choix matériau / procédé / coût",
-        "Formaliser les échanges et décisions de l’équipe projet"
-      ],
-      livrables: [
-        "Analyse du besoin et contraintes de réalisation",
-        "Tableau comparatif des procédés",
-        "Maquette CAO modifiée",
-        "Justification matériau / procédé / coût",
-        "Compte rendu collaboratif CPI-CPRP",
-        "Conclusion sur l’optimisation retenue"
-      ],
-      grille: [
-        ["Analyse des contraintes", "Contraintes techniques, économiques, procédés et délais identifiées", 4],
-        ["Travail collaboratif", "Qualité des échanges, prise en compte des avis CPRP, traçabilité", 5],
-        ["Choix procédé / matériau", "Choix justifié et compatible avec la fonction de la pièce", 5],
-        ["Optimisation technique", "Amélioration de la solution selon coût, qualité, délai", 5],
-        ["Éco-conception", "Prise en compte matière, déchets, cycle de vie ou impact environnemental", 3],
-        ["Dossier technique", "Documents clairs, comparatifs, CAO et synthèse de décision", 4],
-        ["Présentation orale", "Argumentation technique et réponse aux questions", 4]
-      ],
       tags: ["CAO", "Usinage CNC", "Métrologie"],
       tagColor: "#e07b39", tagBg: "rgba(224,123,57,0.2)",
       image: "/collaboratif.jpg",
       accent: "#e07b39", iconBg: "#3a2010",
     },
     {
-      type: "Projet final",
       icon: "🏆",
       titre: "Projet final U51 (6 mois)",
-      sousTitre: "U51 — Conception détaillée",
       desc: "Projet industriel complet répondant à un besoin réel d'entreprise ou de centre de recherche.",
-      contexte: "L'étudiant doit concevoir, dimensionner et valider une solution technique complète répondant à un besoin industriel réel. Le projet doit intégrer toutes les étapes de conception jusqu’à la définition détaillée et la présentation finale.",
-      objectif: "Concevoir, dimensionner, valider et présenter une solution complète.",
-      duree: "6 mois",
-      coefficient: "5",
-      mode: "Individuel ou équipe projet",
-      missions: [
-        "Analyser le besoin et le cahier des charges",
-        "Proposer et justifier des solutions techniques",
-        "Concevoir la maquette 3D et l’assemblage",
-        "Dimensionner les éléments critiques et valider par calcul ou simulation",
-        "Produire les plans de définition et le dossier technique",
-        "Présenter et défendre le projet"
-      ],
-      livrables: [
-        "Cahier des charges / analyse fonctionnelle",
-        "Maquette numérique 3D complète",
-        "Notes de calcul et simulations",
-        "Plans cotés et tolérancés",
-        "Dossier technique complet",
-        "Présentation orale de soutenance"
-      ],
-      grille: [
-        ["Analyse du besoin", "Compréhension du besoin, analyse fonctionnelle, cahier des charges", 4],
-        ["Solutions proposées", "Pertinence, créativité et justification des solutions techniques retenues", 4],
-        ["Maquette CAO / assemblage", "Qualité de la maquette 3D, structure d’assemblage, respect des contraintes", 5],
-        ["Dimensionnement / simulation", "Justesse des calculs, validation par simulation, cohérence des résultats", 4],
-        ["Choix matériau / procédé / coût", "Pertinence des choix techniques, prise en compte du coût et des procédés", 3],
-        ["Plans et dossier technique", "Qualité des plans, cotation, tolérances, clarté du dossier technique", 5],
-        ["Présentation orale", "Clarté, structuration du discours, réponses aux questions", 5]
-      ],
       tags: ["CAO avancée", "Simulation", "Soutenance"],
       tagColor: "#9d95e8", tagBg: "rgba(157,149,232,0.2)",
       image: "/projetU51.jpg",
       accent: "#9d95e8", iconBg: "#1a1a3a",
     },
   ];
-
-  const typeSelectionneData = TYPES_INFO.find(t => t.type === typeSelectionne);
-  const totalGrille = typeSelectionneData?.grille?.reduce((s, row) => s + row[2], 0) || 0;
 
   return (
     <div style={{ minHeight: "100vh", background: "#0d1117", color: "#e6edf3", fontFamily: "sans-serif", overflowX: "hidden" }}>
@@ -595,13 +494,9 @@ export default function DashboardProjetPage() {
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: 12 }}>
             {TYPES_INFO.map((type, i) => (
               <div key={i}
-                onClick={() => {
-                  setTypeSelectionne(type.type);
-                  setFiltreActif(type.type);
-                }}
-                style={{ borderRadius: 14, overflow: "hidden", border: typeSelectionne === type.type ? `1px solid ${type.accent}` : "1px solid #21262d", cursor: "pointer", transition: "border-color 0.2s, transform 0.2s", position: "relative", minHeight: isMobile ? 170 : 210, boxShadow: typeSelectionne === type.type ? `0 0 0 1px ${type.accent}55, 0 12px 34px ${type.accent}22` : "none" }}
+                style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #21262d", cursor: "pointer", transition: "border-color 0.2s, transform 0.2s", position: "relative", minHeight: isMobile ? 170 : 210 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = type.accent; e.currentTarget.style.transform = "translateY(-3px)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = typeSelectionne === type.type ? type.accent : "#21262d"; e.currentTarget.style.transform = "translateY(0)"; }}>
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "#21262d"; e.currentTarget.style.transform = "translateY(0)"; }}>
                 <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${type.image}')`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg, rgba(13,17,23,0.95) 0%, rgba(13,17,23,0.6) 100%)", zIndex: 1 }} />
                 <div style={{ position: "relative", zIndex: 2, padding: isMobile ? 16 : 20 }}>
@@ -620,155 +515,6 @@ export default function DashboardProjetPage() {
             ))}
           </div>
         </div>
-
-
-        {/* DÉTAIL DU TYPE SÉLECTIONNÉ : CONSIGNE + GRILLE */}
-        {typeSelectionneData && (
-          <div style={{ marginBottom: 28 }}>
-            <div style={{
-              borderRadius: 18,
-              overflow: "hidden",
-              border: `1px solid ${typeSelectionneData.accent}55`,
-              background: "#161b22",
-              boxShadow: `0 18px 55px ${typeSelectionneData.accent}18`
-            }}>
-              <div style={{ position: "relative", minHeight: isMobile ? 220 : 260, overflow: "hidden" }}>
-                <div style={{ position: "absolute", inset: 0, backgroundImage: `url('${typeSelectionneData.image}')`, backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
-                <div style={{ position: "absolute", inset: 0, background: isMobile ? "rgba(13,17,23,0.92)" : `linear-gradient(90deg, rgba(13,17,23,0.98) 0%, rgba(13,17,23,0.88) 55%, ${typeSelectionneData.accent}33 100%)`, zIndex: 1 }} />
-                <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "22px 18px" : "32px 34px" }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, marginBottom: 18 }}>
-                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                      <div style={{ width: 58, height: 58, borderRadius: 16, background: typeSelectionneData.iconBg, border: `1px solid ${typeSelectionneData.accent}66`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>
-                        {typeSelectionneData.icon}
-                      </div>
-                      <div>
-                        <div style={{ display: "inline-flex", padding: "5px 12px", borderRadius: 8, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, fontSize: 11, fontWeight: 800, marginBottom: 10 }}>
-                          {typeSelectionneData.sousTitre}
-                        </div>
-                        <h2 style={{ fontSize: isMobile ? 22 : 30, fontWeight: 900, color: "#e6edf3", margin: "0 0 8px", lineHeight: 1.15 }}>
-                          {typeSelectionneData.titre}
-                        </h2>
-                        <p style={{ color: "#c9d1d9", fontSize: isMobile ? 12 : 14, lineHeight: 1.7, maxWidth: 720, margin: 0 }}>
-                          {typeSelectionneData.objectif}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-  onClick={() => {
-    setTypeSelectionne(null);
-    setFiltreActif("Tous");
-  }}
-  title="Fermer"
-  style={{
-    position: "absolute",
-    top: 18,
-    right: 18,
-    zIndex: 20,
-    width: 42,
-    height: 42,
-    borderRadius: "50%",
-    background: "#f85149",
-    border: "2px solid rgba(255,255,255,0.35)",
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: 800,
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 8px 28px rgba(248,81,73,0.45)"
-  }}
->
-  ×
-</button>
-                  </div>
-
-                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
-                    {[
-                      { icon: "📅", label: "Durée", value: typeSelectionneData.duree },
-                      { icon: "📊", label: "Coefficient", value: typeSelectionneData.coefficient },
-                      { icon: "👥", label: "Organisation", value: typeSelectionneData.mode },
-                    ].map(item => (
-                      <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: "rgba(13,17,23,0.65)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 12 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 9, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}44`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{item.icon}</div>
-                        <div>
-                          <div style={{ fontSize: 10, color: "#8b949e", textTransform: "uppercase", letterSpacing: "0.05em" }}>{item.label}</div>
-                          <div style={{ fontSize: 13, color: "#e6edf3", fontWeight: 700 }}>{item.value}</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-                    {typeSelectionneData.tags.map(tag => (
-                      <span key={tag} style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, background: typeSelectionneData.tagBg, color: typeSelectionneData.tagColor, fontWeight: 700, border: `1px solid ${typeSelectionneData.accent}33` }}>{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ padding: isMobile ? 16 : 22, display: "grid", gridTemplateColumns: isMobile ? "1fr" : "0.95fr 1.05fr", gap: 16 }}>
-                <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: isMobile ? 16 : 20 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 10 }}>🧭 Contexte</h3>
-                  <p style={{ fontSize: 13, color: "#c9d1d9", lineHeight: 1.8, marginBottom: 18 }}>{typeSelectionneData.contexte}</p>
-
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 12 }}>🎯 Mission</h3>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
-                    {typeSelectionneData.missions.map((m, idx) => (
-                      <div key={idx} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-                        <span style={{ width: 20, height: 20, borderRadius: "50%", background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, flexShrink: 0 }}>✓</span>
-                        <span style={{ color: "#c9d1d9", fontSize: 13, lineHeight: 1.5 }}>{m}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3", marginBottom: 12 }}>📦 Livrables attendus</h3>
-                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8 }}>
-                    {typeSelectionneData.livrables.map((l, idx) => (
-                      <div key={idx} style={{ padding: "8px 10px", borderRadius: 8, background: "#161b22", border: "1px solid #21262d", color: "#c9d1d9", fontSize: 12 }}>
-                        📄 {l}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ background: "#0d1117", border: "1px solid #21262d", borderRadius: 14, padding: isMobile ? 14 : 18 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 800, color: "#e6edf3" }}>▦ Grille d’évaluation</h3>
-                    <span style={{ padding: "5px 10px", borderRadius: 99, background: `${typeSelectionneData.accent}22`, border: `1px solid ${typeSelectionneData.accent}55`, color: typeSelectionneData.accent, fontSize: 12, fontWeight: 800 }}>
-                      Total /{totalGrille}
-                    </span>
-                  </div>
-
-                  <div style={{ overflowX: "auto", border: "1px solid #30363d", borderRadius: 12 }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
-                      <thead>
-                        <tr style={{ background: "#161b22" }}>
-                          <th style={{ textAlign: "left", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Critère</th>
-                          <th style={{ textAlign: "left", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Attendus</th>
-                          <th style={{ textAlign: "center", padding: "11px 12px", color: "#e6edf3", fontSize: 12, borderBottom: "1px solid #30363d" }}>Pts</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {typeSelectionneData.grille.map((row, idx) => (
-                          <tr key={idx}>
-                            <td style={{ padding: "11px 12px", color: "#e6edf3", fontSize: 12, fontWeight: 700, borderBottom: "1px solid #21262d" }}>{row[0]}</td>
-                            <td style={{ padding: "11px 12px", color: "#8b949e", fontSize: 12, lineHeight: 1.45, borderBottom: "1px solid #21262d" }}>{row[1]}</td>
-                            <td style={{ padding: "11px 12px", color: typeSelectionneData.accent, fontSize: 13, fontWeight: 900, textAlign: "center", borderBottom: "1px solid #21262d" }}>/{row[2]}</td>
-                          </tr>
-                        ))}
-                        <tr style={{ background: "#161b22" }}>
-                          <td colSpan={2} style={{ padding: "13px 12px", color: "#e6edf3", fontWeight: 900, fontSize: 13 }}>TOTAL</td>
-                          <td style={{ padding: "13px 12px", color: "#e6edf3", fontWeight: 900, fontSize: 15, textAlign: "center" }}>/{totalGrille}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* PROJETS RÉALISÉS */}
         <div style={{ marginBottom: 28 }}>
@@ -808,9 +554,9 @@ export default function DashboardProjetPage() {
                 </button>
               ))}
             </div>
-            {!isMobile && projetsFiltres.length > 8 && (
-  <button
-    onClick={() => router.push("/projet/tous")}
+            {!isMobile && (
+              <button
+                onClick={() => router.push("/projet/tous")}
                 style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 14px", borderRadius: 20, background: "transparent", border: "1px solid #30363d", color: "#8b949e", fontSize: 11, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s" }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#58a6ff"; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#8b949e"; }}>
@@ -846,7 +592,7 @@ export default function DashboardProjetPage() {
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(auto-fill, minmax(220px,1fr))", gap: isMobile ? 10 : 14 }}>
-              {projetsAffiches.map(projet => {
+              {projetsFiltres.map(projet => {
                 const typeBadge = typeBadgeStyle(projet.type);
                 const niveauStyle = niveauBadge(projet.niveau);
                 return (

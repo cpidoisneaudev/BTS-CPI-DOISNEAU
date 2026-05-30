@@ -20,14 +20,12 @@ export default function AppShell({ children }) {
   );
   const showSidebar = user && userData && !isPublic;
 
-  // ✅ FIX 1 : Ferme la sidebar sur mobile au chargement initial
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setCollapsed(true);
     }
   }, []);
 
-  // ✅ FIX 2 : Ferme la sidebar à chaque navigation sur mobile
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setCollapsed(true);
@@ -36,28 +34,27 @@ export default function AppShell({ children }) {
 
   if (!showSidebar) {
     return (
-      <>
+      <div style={{ minHeight: "100vh", backgroundColor: "var(--bg-primary)" }}>
         <Navbar />
         <main>{children}</main>
         <Footer />
-      </>
+      </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
-      {/* Navbar full width fixe en haut */}
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      minHeight: "100vh",
+      overflowX: "hidden",
+      backgroundColor: "var(--bg-primary)",
+    }}>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
       </div>
 
-      {/* Sous la navbar */}
-      <div style={{
-        display: "flex",
-        flex: 1,
-        marginTop: 65,
-      }}>
-        {/* Sidebar fixe */}
+      <div style={{ display: "flex", flex: 1, marginTop: 65 }}>
         <div style={{
           position: "fixed",
           top: 65,
@@ -70,7 +67,6 @@ export default function AppShell({ children }) {
           <LogicielsSidebar />
         </div>
 
-        {/* Contenu principal */}
         <div style={{
           marginLeft: width,
           flex: 1,

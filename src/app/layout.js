@@ -1,7 +1,6 @@
 import { Inter } from 'next/font/google';
 import './globals.css';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
+import { ThemeProvider } from 'next-themes';
 import { AuthProvider } from '@/lib/AuthContext';
 import { SidebarProvider } from '@/lib/SidebarContext';
 import AppShell from '@/components/AppShell';
@@ -16,14 +15,16 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="fr" suppressHydrationWarning>
-      <body className={`${inter.className} bg-[#0d1117] min-h-screen`}>
-        <AuthProvider>
-          <SidebarProvider>
-            <AppShell>
-              {children}
-            </AppShell>
-          </SidebarProvider>
-        </AuthProvider>
+      <body className={inter.className}>
+        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+          <AuthProvider>
+            <SidebarProvider>
+              <AppShell>
+                {children}
+              </AppShell>
+            </SidebarProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

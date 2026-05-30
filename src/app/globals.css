@@ -1,26 +1,202 @@
 @import "tailwindcss";
 
+/* =============================================
+   DARK MODE (défaut)
+   ============================================= */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-primary:     #0d1117;
+  --bg-secondary:   #10161f;
+  --bg-card:        #161b22;
+  --bg-hover:       #1c2128;
+
+  --border:         #21262d;
+  --border-hover:   #30363d;
+
+  --text-primary:   #e6edf3;
+  --text-secondary: #8b949e;
+  --text-tertiary:  #7d8590;
+
+  --accent:         #1f6feb;
+  --accent-light:   #58a6ff;
+  --accent-soft:    rgba(31, 107, 235, 0.18);
+
+  --success:        #3fb950;
+  --danger:         #f85149;
+  --cyan:           #00b4d8;
+  --cyan-hover:     #0099bb;
+
+  --shadow:         0 2px 8px rgba(0,0,0,0.4);
+  --shadow-hover:   0 4px 16px rgba(0,0,0,0.5);
+
+  --sidebar-bg:     #0d1117;
+  --navbar-bg:      #0d1117;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* =============================================
+   LIGHT MODE — Bleu industriel moderne
+   ============================================= */
+[data-theme="light"] {
+  --bg-primary:     #eef4ff;
+  --bg-secondary:   #f7faff;
+  --bg-card:        rgba(255, 255, 255, 0.86);
+  --bg-hover:       #e8f0ff;
+
+  --border:         #c7d7f5;
+  --border-hover:   #7ea6ff;
+
+  --text-primary:   #0b1220;
+  --text-secondary: #1e3a8a;
+  --text-tertiary:  #64748b;
+
+  --accent:         #2563eb;
+  --accent-light:   #0ea5e9;
+  --accent-soft:    rgba(37, 99, 235, 0.13);
+
+  --success:        #10b981;
+  --danger:         #dc2626;
+  --cyan:           #0ea5e9;
+  --cyan-hover:     #0284c7;
+
+  --shadow:         0 14px 35px rgba(37, 99, 235, 0.12);
+  --shadow-hover:   0 20px 45px rgba(37, 99, 235, 0.20);
+
+  --sidebar-bg:     linear-gradient(180deg, #07111f 0%, #10233f 100%);
+  --navbar-bg:      rgba(255, 255, 255, 0.88);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =============================================
+   BASE
+   ============================================= */
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  margin: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(37, 99, 235, 0.13), transparent 28%),
+    radial-gradient(circle at 85% 25%, rgba(14, 165, 233, 0.16), transparent 30%),
+    linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
+}
+
+* {
+  box-sizing: border-box;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.15s ease,
+    box-shadow 0.2s ease;
+}
+
+/* =============================================
+   CLASSES GLOBALES UTILES
+   ============================================= */
+.app-navbar {
+  background: var(--navbar-bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(18px);
+}
+
+.app-sidebar {
+  background: var(--sidebar-bg);
+  border-right: 1px solid rgba(255,255,255,0.08);
+}
+
+.app-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.app-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-hover);
+}
+
+.app-title {
+  color: var(--text-primary);
+}
+
+.app-text {
+  color: var(--text-secondary);
+}
+
+.app-muted {
+  color: var(--text-tertiary);
+}
+
+.app-accent {
+  color: var(--accent);
+}
+
+/* =============================================
+   LIGHT MODE DETAILS
+   ============================================= */
+[data-theme="light"] .app-card {
+  border-top: 3px solid var(--accent);
+}
+
+[data-theme="light"] .active-link,
+[data-theme="light"] .sidebar-active {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9);
+  color: #ffffff;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #94a3b8;
+}
+
+/* =============================================
+   DARK MODE FORM ELEMENTS
+   ============================================= */
+:root input,
+:root textarea,
+:root select {
+  color-scheme: dark;
+}
+
+[data-theme="light"] input,
+[data-theme="light"] textarea,
+[data-theme="light"] select {
+  color-scheme: light;
+}
+
+/* =============================================
+   SCROLLBAR
+   ============================================= */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
