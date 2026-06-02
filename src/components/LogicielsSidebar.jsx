@@ -156,7 +156,7 @@ export default function LogicielsSidebar() {
 
       <SectionLabel text="Ressources" collapsed={collapsed} />
       <NavLink
-        href="/ressources"
+        href="/bibliotheque"
         icon={IconBooks}
         label="Bibliothèque"
         collapsed={collapsed}

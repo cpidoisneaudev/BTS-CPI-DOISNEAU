@@ -448,7 +448,7 @@ export default function DashboardProjetPage() {
 
         {/* HERO */}
         <div style={{ borderRadius: 16, overflow: "hidden", position: "relative", marginBottom: 28, minHeight: isMobile ? 260 : 320 }}>
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=1400&q=80')", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "url('/hero_projets.png')", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
           <div style={{ position: "absolute", inset: 0, background: isMobile ? "rgba(13,17,23,0.85)" : "linear-gradient(90deg, rgba(13,17,23,0.97) 0%, rgba(13,17,23,0.85) 55%, rgba(13,17,23,0.35) 100%)", zIndex: 1 }} />
           <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "28px 20px" : "52px 44px", maxWidth: 600 }}>
             <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(31,107,235,0.2)", border: "1px solid rgba(31,107,235,0.4)", borderRadius: 99, padding: "4px 12px", fontSize: 10, color: "#58a6ff", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 16 }}>
