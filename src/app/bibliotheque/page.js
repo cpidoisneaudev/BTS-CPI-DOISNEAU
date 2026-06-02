@@ -291,7 +291,7 @@ function ModalLivre({ onClose, userData }) {
       <Field label="Titre *">
         <input style={inputSt} value={form.titre} onChange={e => set("titre", e.target.value)} placeholder="Ex: Mécanique des matériaux" />
       </Field>
-      <Field label="Auteur">
+      <Field label="Sous-titre">
         <input style={inputSt} value={form.soustitre} onChange={e => set("soustitre", e.target.value)} placeholder="Ex: Cours et exercices" />
       </Field>
       <Field label="Description">
@@ -433,17 +433,17 @@ export default function DashboardBibliothequePage() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(max-width: 1100px)");
 
-  const [search, setSearch]           = useState("");
+  const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("Tous");
 
   // Modals
-  const [showModalSite, setShowModalSite]   = useState(false);
-  const [editSite, setEditSite]             = useState(null);
+  const [showModalSite, setShowModalSite] = useState(false);
+  const [editSite, setEditSite] = useState(null);
   const [showModalLivre, setShowModalLivre] = useState(false);
   const [showModalPiece, setShowModalPiece] = useState(false);
 
   // Données Firestore
-  const [sites, setSites]   = useState([]);
+  const [sites, setSites] = useState([]);
   const [livres, setLivres] = useState([]);
   const [pieces, setPieces] = useState([]);
 
@@ -451,26 +451,31 @@ export default function DashboardBibliothequePage() {
 
   useEffect(() => { if (user === null) router.push("/login"); }, [user, router]);
 
-  // Écoute temps réel
+  // Écoute temps réel — inchangée
   useEffect(() => {
     if (!user) return;
-    const unSites  = onSnapshot(query(collection(db, "bibliotheque", "sites",  "items"), orderBy("createdAt", "asc")),  s => setSites(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unLivres = onSnapshot(query(collection(db, "bibliotheque", "livres", "items"), orderBy("createdAt", "desc")),  s => setLivres(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unPieces = onSnapshot(query(collection(db, "bibliotheque", "pieces", "items"), orderBy("createdAt", "asc")),  s => setPieces(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unSites = onSnapshot(query(collection(db, "bibliotheque", "sites", "items"), orderBy("createdAt", "asc")), s => setSites(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unLivres = onSnapshot(query(collection(db, "bibliotheque", "livres", "items"), orderBy("createdAt", "desc")), s => setLivres(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unPieces = onSnapshot(query(collection(db, "bibliotheque", "pieces", "items"), orderBy("createdAt", "asc")), s => setPieces(s.docs.map(d => ({ id: d.id, ...d.data() }))));
     return () => { unSites(); unLivres(); unPieces(); };
   }, [user]);
 
-  // Suppression
-  const deleteSite  = async (id) => { if (confirm("Supprimer ce site ?"))  await deleteDoc(doc(db, "bibliotheque", "sites",  "items", id)); };
+  // Suppression — inchangée
+  const deleteSite = async (id) => { if (confirm("Supprimer ce site ?")) await deleteDoc(doc(db, "bibliotheque", "sites", "items", id)); };
   const deleteLivre = async (id) => { if (confirm("Supprimer ce livre ?")) await deleteDoc(doc(db, "bibliotheque", "livres", "items", id)); };
   const deletePiece = async (id) => { if (confirm("Supprimer cette pièce ?")) await deleteDoc(doc(db, "bibliotheque", "pieces", "items", id)); };
 
-  // Filtrage
   const filteredSites = useMemo(() => {
     const base = [...sites].sort((a, b) => (a.nom || "").localeCompare(b.nom || ""));
     const filtered = !search.trim() ? base : base.filter(s => [s.nom, s.description].join(" ").toLowerCase().includes(search.toLowerCase()));
     return filtered.slice(0, 5);
   }, [sites, search]);
+
+  const filteredLivres = useMemo(() => {
+    if (!search.trim()) return livres;
+    const q = search.toLowerCase();
+    return livres.filter(d => [d.titre, d.soustitre, d.description, d.size, d.pages].join(" ").toLowerCase().includes(q));
+  }, [livres, search]);
 
   const filteredPieces = useMemo(() => {
     const byFilter = activeFilter === "Tous" ? pieces : pieces.filter(p => p.categorie === activeFilter);
@@ -479,67 +484,79 @@ export default function DashboardBibliothequePage() {
     return byFilter.filter(p => [p.titre, p.categorie, ...(p.formats || [])].join(" ").toLowerCase().includes(q));
   }, [pieces, activeFilter, search]);
 
+  const surface = {
+    background: "linear-gradient(180deg, rgba(16,27,43,0.92), rgba(11,18,29,0.96))",
+    border: "1px solid rgba(88,166,255,0.16)",
+    boxShadow: "0 18px 50px rgba(0,0,0,0.35)",
+  };
+
   const quickCards = [
-    { title: "Liens Utiles",        count: sites.length,  label: "ressources",  icon: <IconLink />,  color: "#1f6feb", bg: "rgba(31,107,235,0.15)", border: "rgba(31,107,235,0.3)" },
-    { title: "Livres PDF",          count: livres.length, label: "documents",   icon: <IconBook />,  color: "#3fb950", bg: "rgba(63,185,80,0.12)",  border: "rgba(63,185,80,0.3)" },
-    { title: "Norelem & Catalogues",count: 18,            label: "catalogues",  icon: <IconBox />,   color: "#e07b39", bg: "rgba(224,123,57,0.12)", border: "rgba(224,123,57,0.3)" },
-    { title: "Pièces mécaniques",   count: pieces.length, label: "modèles 3D",  icon: <IconCube />,  color: "#9d95e8", bg: "rgba(157,149,232,0.12)",border: "rgba(157,149,232,0.3)" },
+    { title: "Liens utiles", count: sites.length, label: "ressources", icon: <IconBook />, color: "#3b82f6", bg: "linear-gradient(135deg,rgba(37,99,235,0.95),rgba(14,165,233,0.45))", border: "rgba(59,130,246,0.45)" },
+    { title: "Livres PDF", count: livres.length, label: "documents", icon: <IconBook />, color: "#22c55e", bg: "linear-gradient(135deg,rgba(34,197,94,0.9),rgba(21,128,61,0.35))", border: "rgba(34,197,94,0.40)" },
+    { title: "Catalogues", count: 8, label: "catalogues", icon: <IconBox />, color: "#fb923c", bg: "linear-gradient(135deg,rgba(249,115,22,0.95),rgba(194,65,12,0.35))", border: "rgba(249,115,22,0.45)" },
+    { title: "Pièces mécaniques", count: pieces.length, label: "modèles 3D", icon: <IconCube />, color: "#a78bfa", bg: "linear-gradient(135deg,rgba(124,58,237,0.95),rgba(88,28,135,0.45))", border: "rgba(167,139,250,0.45)" },
+  ];
+
+  const categories = [
+    { title: "Livres PDF", count: livres.length, label: "documents", img: "/images/bibliotheque/cat-livres.svg", icon: <IconBook />, color: "#3b82f6", href: "/bibliotheque/livres" },
+    { title: "Composants", count: sites.filter(s => s.tag === "Composants").length || 1, label: "ressource", img: "/images/bibliotheque/cat-composants.svg", icon: <IconRefresh />, color: "#22c55e", href: "/bibliotheque/sites" },
+    { title: "Catalogues", count: 18, label: "catalogues", img: "/images/bibliotheque/cat-catalogues.svg", icon: <IconBox />, color: "#fb923c", href: "/bibliotheque/sites" },
+    { title: "Pièces 3D", count: pieces.length, label: "modèle", img: "/images/bibliotheque/cat-pieces.svg", icon: <IconCube />, color: "#8b5cf6", href: "#pieces-cao" },
+  ];
+
+  const news = [
+    { title: "CATIA V5 — Les bases", badge: "Nouveau cours", date: "Ajouté récemment", img: "/images/bibliotheque/cat-pieces.svg", color: "#2563eb" },
+    { title: "SKF — Roulements", badge: "Nouveau catalogue", date: "Ressource technique", img: "/images/bibliotheque/cat-composants.svg", color: "#f97316" },
+    { title: "Machine de remplissage", badge: "Nouveau projet", date: "Projet BTS CPI", img: "/images/bibliotheque/projet-remplissage.svg", color: "#16a34a" },
   ];
 
   if (!user || !userData) return null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)", fontFamily: "sans-serif", overflowX: "hidden" }}>
-
-      {/* Modals */}
+    <div style={{ minHeight: "100vh", background: "radial-gradient(circle at 20% 0%, rgba(37,99,235,0.15), transparent 35%), radial-gradient(circle at 80% 10%, rgba(14,165,233,0.08), transparent 30%), var(--bg-primary)", color: "var(--text-primary)", fontFamily: "sans-serif", overflowX: "hidden" }}>
       {(showModalSite || editSite) && <ModalSite onClose={() => { setShowModalSite(false); setEditSite(null); }} userData={userData} siteToEdit={editSite} />}
       {showModalLivre && <ModalLivre onClose={() => setShowModalLivre(false)} userData={userData} />}
       {showModalPiece && <ModalPiece onClose={() => setShowModalPiece(false)} userData={userData} />}
 
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: isMobile ? "16px 12px" : "28px 24px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: 1480, margin: "0 auto", padding: isMobile ? "16px 12px" : "28px 24px", boxSizing: "border-box" }}>
+        {/* HERO */}
+        <section style={{ borderRadius: 22, overflow: "hidden", position: "relative", marginBottom: 14, ...surface }}>
+          <div style={{ position: "absolute", inset: 0, backgroundImage: "url('/images/bibliotheque/hero-industrie.svg')", backgroundSize: "cover", backgroundPosition: "center right", opacity: 0.95 }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(11,18,29,0.97) 0%, rgba(12,25,45,0.86) 47%, rgba(9,16,27,0.20) 100%)" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 18% 45%, rgba(37,99,235,0.24), transparent 35%)" }} />
 
-        {/* ══════════════ HERO ══════════════ */}
-        <section style={{ borderRadius: 20, overflow: "hidden", position: "relative", marginBottom: 20, border: "1px solid var(--border)", background: "var(--bg-card)", boxShadow: "var(--shadow)" }}>
-          <div style={{ position: "absolute", inset: 0, backgroundImage: "url('https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=1600&q=80')", backgroundSize: "cover", backgroundPosition: "center right", opacity: 0.18 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, var(--bg-card) 45%, transparent 100%)" }} />
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 20% 50%, rgba(31,107,235,0.08), transparent 50%)" }} />
-
-          <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "24px 20px" : "36px 40px" }}>
+          <div style={{ position: "relative", zIndex: 2, padding: isMobile ? "24px 20px" : "34px 36px 28px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg,rgba(31,107,235,0.9),rgba(8,145,178,0.7))", border: "1px solid rgba(88,166,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg,#0ea5e9,#1d4ed8)", border: "1px solid rgba(255,255,255,0.18)", boxShadow: "0 16px 38px rgba(37,99,235,0.35)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <IconBook />
               </div>
               <div>
-                <h1 style={{ fontSize: isMobile ? 26 : 36, fontWeight: 900, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.03em", lineHeight: 1 }}>Bibliothèques</h1>
-                <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: "6px 0 0" }}>
-                  Ressources pédagogiques, techniques et professionnelles du{" "}
-                  <span style={{ color: "#1f6feb", fontWeight: 700 }}>BTS CPI</span>
+                <h1 style={{ fontSize: isMobile ? 28 : 42, fontWeight: 950, color: "#fff", margin: 0, letterSpacing: "-0.045em", lineHeight: 1 }}>Bibliothèques</h1>
+                <p style={{ fontSize: 14, color: "#cbd5e1", margin: "8px 0 0" }}>
+                  Ressources pédagogiques, techniques et professionnelles du <span style={{ color: "#38bdf8", fontWeight: 800 }}>BTS CPI</span>
                 </p>
               </div>
             </div>
 
-            {/* Barre de recherche */}
-            <div style={{ position: "relative", width: isMobile ? "100%" : 560, maxWidth: "100%", marginBottom: 24 }}>
-              <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-tertiary)", pointerEvents: "none" }}><IconSearch /></div>
-              <input value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Rechercher un livre, un composant, un site..."
-                style={{ width: "100%", height: 46, paddingLeft: 42, paddingRight: search ? 36 : 16, borderRadius: 10, background: "var(--bg-primary)", border: "1px solid var(--border-hover)", color: "var(--text-primary)", fontSize: 14, outline: "none", boxSizing: "border-box" }}
-                onFocus={e => e.target.style.borderColor = "#1f6feb"}
-                onBlur={e => e.target.style.borderColor = "var(--border-hover)"} />
-              {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-tertiary)", cursor: "pointer", fontSize: 16 }}>✕</button>}
+            <div style={{ position: "relative", width: isMobile ? "100%" : 620, maxWidth: "100%", marginBottom: 24 }}>
+              <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", color: "#94a3b8", pointerEvents: "none" }}><IconSearch /></div>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un livre, un composant, un site..."
+                style={{ width: "100%", height: 52, paddingLeft: 46, paddingRight: search ? 38 : 16, borderRadius: 14, background: "rgba(2,8,23,0.72)", border: "1px solid rgba(148,163,184,0.24)", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)" }}
+                onFocus={e => e.target.style.borderColor = "#38bdf8"}
+                onBlur={e => e.target.style.borderColor = "rgba(148,163,184,0.24)"} />
+              {search && <button onClick={() => setSearch("")} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 17 }}>✕</button>}
             </div>
 
-            {/* Stat cards */}
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 14 }}>
               {quickCards.map(card => (
-                <div key={card.title} style={{ borderRadius: 12, background: "var(--bg-primary)", border: `1px solid ${card.border}`, padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, transition: "transform 0.15s, box-shadow 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "var(--shadow-hover)"; }}
+                <div key={card.title} style={{ borderRadius: 16, background: "rgba(2,8,23,0.58)", border: `1px solid ${card.border}`, padding: isMobile ? "12px" : "16px 18px", display: "flex", alignItems: "center", gap: 16, transition: "transform 0.18s, box-shadow 0.18s, background 0.18s", backdropFilter: "blur(10px)" }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = `0 18px 40px ${card.border}`; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 10, background: card.bg, color: card.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{card.icon}</div>
+                  <div style={{ width: 54, height: 54, borderRadius: 14, background: card.bg, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: `0 12px 28px ${card.border}` }}>{card.icon}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: isMobile ? 11 : 12, color: "var(--text-secondary)", fontWeight: 500, marginBottom: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.title}</div>
-                    <div style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: card.color, lineHeight: 1 }}>{card.count}</div>
-                    <div style={{ fontSize: 11, color: "var(--text-tertiary)" }}>{card.label}</div>
+                    <div style={{ fontSize: 12, color: "#cbd5e1", fontWeight: 600, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{card.title}</div>
+                    <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 900, color: card.color, lineHeight: 1 }}>{card.count}</div>
+                    <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{card.label}</div>
                   </div>
                 </div>
               ))}
@@ -547,310 +564,192 @@ export default function DashboardBibliothequePage() {
           </div>
         </section>
 
-        {/* ══════════════ SITES + LIVRES ══════════════ */}
-        <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "1fr 1.1fr", gap: 16, marginBottom: 16 }}>
-
-          {/* Sites recommandés */}
-          <section style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20, boxShadow: "var(--shadow)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10 }}>
-              <div>
-                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>Sites recommandés</h2>
-                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "3px 0 0" }}>Ordre alphabétique · {sites.length} site{sites.length > 1 ? "s" : ""}</p>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                <Link href="bibliotheque/sites"
-                  style={{ padding: "6px 12px", borderRadius: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 500, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                  Voir tous →
-                </Link>
-                {isProf && (
-                  <button onClick={() => setShowModalSite(true)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}>
-                    <IconPlus /> Ajouter
-                  </button>
-                )}
-              </div>
+        {/* NOUVEAUTÉS */}
+        <section style={{ borderRadius: 18, marginBottom: 14, padding: isMobile ? 16 : 18, ...surface }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "160px repeat(3, 1fr)", gap: 14, alignItems: "center" }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>🔥 Nouveautés</h2>
+              <Link href="/bibliotheque/livres" style={{ marginTop: 12, width: "fit-content", display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", borderRadius: 12, border: "1px solid rgba(148,163,184,0.18)", color: "#cbd5e1", textDecoration: "none", fontSize: 13, background: "rgba(15,23,42,0.62)" }}>Voir tout →</Link>
             </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filteredSites.length === 0 && (
-                <div style={{ textAlign: "center", padding: "30px 0", color: "var(--text-tertiary)", fontSize: 13 }}>
-                  {search ? "Aucun site trouvé" : "Aucun site pour l'instant"}
+            {news.map(item => (
+              <div key={item.title} style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+                <img src={item.img} alt="" style={{ width: 120, height: 76, objectFit: "cover", borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <span style={{ display: "inline-flex", marginBottom: 8, padding: "4px 9px", borderRadius: 7, background: item.color, color: "#fff", fontSize: 11, fontWeight: 800 }}>{item.badge}</span>
+                  <h3 style={{ margin: 0, color: "#fff", fontSize: 15, fontWeight: 850, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</h3>
+                  <p style={{ margin: "5px 0 0", color: "#94a3b8", fontSize: 12 }}>{item.date}</p>
                 </div>
-              )}
-              {filteredSites.map(site => (
-                <div key={site.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "var(--bg-primary)", border: "1px solid var(--border)", transition: "border-color 0.15s, transform 0.15s", position: "relative", minWidth: 0 }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.transform = "translateX(3px)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "translateX(0)"; }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg,rgba(31,107,235,0.2),rgba(8,145,178,0.1))", border: "1px solid rgba(88,166,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", color: "#58a6ff", fontSize: 10, fontWeight: 900, flexShrink: 0 }}>
-                    {site.logo || (site.nom || "").slice(0, 2).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, width: 0, minWidth: 0, overflow: "hidden" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{highlight(site.nom, search)}</span>
-                      {site.tag && <span style={{ fontSize: 10, padding: "1px 7px", borderRadius: 99, background: TAG_COLORS[site.tag]?.bg, color: TAG_COLORS[site.tag]?.text, fontWeight: 600, flexShrink: 0 }}>{site.tag}</span>}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div style={{ display: "grid", gridTemplateColumns: isMobile || isTablet ? "1fr" : "0.9fr 1.2fr", gap: 16, marginBottom: 16 }}>
+          {/* LEFT COLUMN */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Catégories */}
+            <section style={{ borderRadius: 18, padding: 20, ...surface }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 900, margin: 0, color: "#fff" }}>Catégories de ressources</h2>
+                  <p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0" }}>Accès rapide aux contenus principaux</p>
+                </div>
+                <Link href="/bibliotheque/livres" style={{ padding: "8px 13px", borderRadius: 10, background: "rgba(15,23,42,0.60)", border: "1px solid rgba(148,163,184,0.16)", color: "#cbd5e1", fontSize: 12, textDecoration: "none" }}>Voir tout →</Link>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12 }}>
+                {categories.map(cat => (
+                  <Link key={cat.title} href={cat.href} style={{ position: "relative", minHeight: 172, borderRadius: 16, overflow: "hidden", textDecoration: "none", border: "1px solid rgba(148,163,184,0.16)", background: "rgba(15,23,42,0.75)", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = `0 18px 40px ${cat.color}33`; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                    <img src={cat.img} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.72 }} />
+                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 20%, rgba(2,8,23,0.92) 100%)" }} />
+                    <div style={{ position: "relative", zIndex: 1, padding: 14 }}>
+                      <div style={{ width: 38, height: 38, borderRadius: 10, background: cat.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, boxShadow: `0 10px 22px ${cat.color}55` }}>{cat.icon}</div>
+                      <h3 style={{ margin: 0, color: "#fff", fontSize: 15, fontWeight: 850 }}>{cat.title}</h3>
+                      <p style={{ margin: "6px 0 0", color: "#cbd5e1", fontSize: 12 }}><span style={{ color: "#38bdf8", fontWeight: 900 }}>{cat.count}</span> {cat.label}{cat.count > 1 ? "s" : ""}</p>
                     </div>
-                    {site.description && (
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {site.description}
-                      </p>
-                    )}
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                    <a href={site.url} target="_blank" rel="noreferrer"
-                      style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, background: "rgba(31,107,235,0.12)", border: "1px solid rgba(88,166,255,0.3)", color: "#58a6ff", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-                      Visiter <IconExternal />
-                    </a>
-                    {isProf && (
-                      <>
-                        <button onClick={() => setEditSite(site)}
-                          style={{ width: 28, height: 28, borderRadius: 7, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(31,107,235,0.1)"; e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.color = "#58a6ff"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-secondary)"; }}>
-                          <IconEdit />
-                        </button>
-                        <button onClick={() => deleteSite(site.id)}
-                          style={{ width: 28, height: 28, borderRadius: 7, background: "transparent", border: "1px solid var(--border)", color: "var(--danger)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                          onMouseEnter={e => e.currentTarget.style.background = "rgba(248,81,73,0.1)"}
-                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                          <IconTrash />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {sites.length > 5 && (
-              <div style={{ marginTop: 12, textAlign: "center" }}>
-                <Link href="/bibliotheque/sites"
-                  style={{ fontSize: 12, color: "#58a6ff", textDecoration: "none", fontWeight: 500 }}>
-                  Voir les {sites.length - 5} autres sites →
-                </Link>
+                  </Link>
+                ))}
               </div>
-            )}
-          </section>
+            </section>
 
-          {/* Livres PDF */}
-          <section style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20, boxShadow: "var(--shadow)", display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10 }}>
+            {/* Sites recommandés */}
+            <section style={{ borderRadius: 18, padding: 20, ...surface }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, gap: 10 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 900, margin: 0, color: "#fff" }}>Sites recommandés</h2>
+                  <p style={{ fontSize: 11, color: "#94a3b8", margin: "4px 0 0" }}>Ordre alphabétique · {sites.length} site{sites.length > 1 ? "s" : ""}</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                  <Link href="/bibliotheque/sites" style={{ padding: "8px 12px", borderRadius: 10, background: "rgba(15,23,42,0.60)", border: "1px solid rgba(148,163,184,0.16)", color: "#cbd5e1", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>Voir tous →</Link>
+                  {isProf && <button onClick={() => setShowModalSite(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", color: "#fff", fontSize: 12, fontWeight: 800, cursor: "pointer" }}><IconPlus /> Ajouter</button>}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {filteredSites.length === 0 && <div style={{ textAlign: "center", padding: "30px 0", color: "#94a3b8", fontSize: 13 }}>{search ? "Aucun site trouvé" : "Aucun site pour l'instant"}</div>}
+                {filteredSites.map(site => (
+                  <div key={site.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 13, background: "rgba(2,8,23,0.64)", border: "1px solid rgba(148,163,184,0.14)", transition: "border-color 0.15s, transform 0.15s, background 0.15s", minWidth: 0 }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(56,189,248,0.60)"; e.currentTarget.style.transform = "translateX(3px)"; e.currentTarget.style.background = "rgba(15,23,42,0.88)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(148,163,184,0.14)"; e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.background = "rgba(2,8,23,0.64)"; }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 11, background: "linear-gradient(135deg,rgba(37,99,235,0.90),rgba(14,165,233,0.40))", border: "1px solid rgba(56,189,248,0.32)", display: "flex", alignItems: "center", justifyContent: "center", color: "#bfdbfe", fontSize: 10, fontWeight: 950, flexShrink: 0 }}>{site.logo || (site.nom || "").slice(0, 2).toUpperCase()}</div>
+                    <div style={{ flex: 1, width: 0, minWidth: 0, overflow: "hidden" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 850, color: "#fff" }}>{highlight(site.nom, search)}</span>
+                        {site.tag && <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 99, background: TAG_COLORS[site.tag]?.bg, color: TAG_COLORS[site.tag]?.text, fontWeight: 800, flexShrink: 0 }}>{site.tag}</span>}
+                      </div>
+                      {site.description && <p style={{ fontSize: 11, color: "#94a3b8", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{site.description}</p>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                      <a href={site.url} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 10px", borderRadius: 8, background: "rgba(37,99,235,0.18)", border: "1px solid rgba(56,189,248,0.30)", color: "#60a5fa", fontSize: 11, fontWeight: 800, textDecoration: "none" }}>Visiter <IconExternal /></a>
+                      {isProf && <><button onClick={() => setEditSite(site)} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(15,23,42,0.8)", border: "1px solid rgba(148,163,184,0.18)", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><IconEdit /></button><button onClick={() => deleteSite(site.id)} style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.22)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><IconTrash /></button></>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {sites.length > 5 && <div style={{ marginTop: 12, textAlign: "center" }}><Link href="/bibliotheque/sites" style={{ fontSize: 12, color: "#38bdf8", textDecoration: "none", fontWeight: 700 }}>Voir les {sites.length - 5} autres sites →</Link></div>}
+            </section>
+
+            {/* Projet du mois */}
+            <section style={{ position: "relative", overflow: "hidden", borderRadius: 18, padding: 22, minHeight: 210, ...surface }}>
+              <img src="/images/bibliotheque/projet-remplissage.svg" alt="Projet machine" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.78 }} />
+              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, rgba(5,18,38,0.96), rgba(5,18,38,0.65), rgba(5,18,38,0.25))" }} />
+              <div style={{ position: "relative", zIndex: 1, maxWidth: 420 }}>
+                <div style={{ color: "#fff", fontWeight: 900, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>⭐ Projet du mois</div>
+                <h2 style={{ color: "#fff", fontSize: 22, fontWeight: 950, margin: "0 0 10px", letterSpacing: "-0.02em" }}>Machine de remplissage de parfum</h2>
+                <p style={{ color: "#cbd5e1", fontSize: 13, lineHeight: 1.6, margin: "0 0 16px" }}>Projet réalisé par les étudiants de BTS CPI : conception 3D, simulation et réalisation.</p>
+                <Link href="/projet" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", color: "#fff", fontSize: 13, fontWeight: 850, textDecoration: "none" }}>Voir le projet →</Link>
+              </div>
+            </section>
+          </div>
+
+          {/* RIGHT COLUMN : Livres PDF */}
+          <section style={{ borderRadius: 18, padding: 20, ...surface }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, gap: 10 }}>
               <div>
-                <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>Livres et documents PDF</h2>
-                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "3px 0 0" }}>Téléchargement direct · {livres.length} document{livres.length > 1 ? "s" : ""}</p>
+                <h2 style={{ fontSize: 20, fontWeight: 950, margin: 0, color: "#fff" }}>Livres et documents PDF</h2>
+                <p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0" }}>Téléchargement direct · {livres.length} document{livres.length > 1 ? "s" : ""}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                <Link href="/bibliotheque/livres"
-                  style={{ padding: "6px 12px", borderRadius: 8, background: "transparent", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 500, cursor: "pointer", textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
-                  Voir tous →
-                </Link>
-                {isProf && (
-                  <button onClick={() => setShowModalLivre(true)}
-                    style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}>
-                    <IconPlus /> Ajouter
-                  </button>
-                )}
+                <Link href="/bibliotheque/livres" style={{ padding: "8px 12px", borderRadius: 10, background: "rgba(15,23,42,0.60)", border: "1px solid rgba(148,163,184,0.16)", color: "#cbd5e1", fontSize: 12, textDecoration: "none" }}>Voir tous →</Link>
+                {isProf && <button onClick={() => setShowModalLivre(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", color: "#fff", fontSize: 12, fontWeight: 850, cursor: "pointer" }}><IconPlus /> Ajouter</button>}
               </div>
             </div>
 
-            {livres.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 13 }}>
-                {isProf ? "Aucun document — cliquez sur Ajouter" : "Aucun document disponible"}
-              </div>
+            {filteredLivres.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "70px 0", color: "#94a3b8", fontSize: 13 }}>{isProf ? "Aucun document — cliquez sur Ajouter" : "Aucun document disponible"}</div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {livres.slice(0, 2).map(doc => (
-                  <div key={doc.id} style={{ borderRadius: 14, background: "var(--bg-primary)", border: "1px solid var(--border)", display: "flex", alignItems: "stretch", overflow: "hidden", transition: "border-color 0.2s, box-shadow 0.2s", boxShadow: "var(--shadow)" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.boxShadow = "var(--shadow-hover)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow)"; }}>
-
-                    {/* ── Couverture livre à gauche ── */}
-                    <div style={{ width: 110, flexShrink: 0, background: "#0d1117", display: "flex", alignItems: "center", justifyContent: "center", padding: "14px 10px 14px 14px" }}>
-                      <div style={{ position: "relative", display: "flex", filter: "drop-shadow(4px 6px 12px rgba(0,0,0,0.6))" }}>
-                        {/* Spine (tranche) */}
-                        <div style={{ width: 10, background: "rgba(0,0,0,0.7)", borderRadius: "3px 0 0 3px", flexShrink: 0 }} />
-                        {/* Corps du livre */}
-                        <div style={{ width: 68, height: 90, borderRadius: "0 4px 4px 0", overflow: "hidden", position: "relative", flexShrink: 0 }}>
-                          {doc.coverUrl ? (
-                            <>
-                              <img src={doc.coverUrl} alt={doc.titre} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-                              {/* Reflet lumière */}
-                              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(120deg,rgba(255,255,255,0.10) 0%,transparent 55%)" }} />
-                            </>
-                          ) : (
-                            <div style={{ width: "100%", height: "100%", background: doc.coverBg || "linear-gradient(160deg,#1e3a5f,#2d6a9f)", display: "flex", flexDirection: "column", padding: "8px 7px" }}>
-                              <div style={{ fontSize: 8, fontWeight: 900, color: "#fff", lineHeight: 1.3, flex: 1 }}>{doc.titre}</div>
-                              <div style={{ background: "#da3633", color: "#fff", fontSize: 6, fontWeight: 900, padding: "2px 4px", borderRadius: 2, alignSelf: "flex-start" }}>PDF</div>
-                            </div>
-                          )}
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0,1fr))", gap: 14 }}>
+                {filteredLivres.slice(0, 3).map(doc => (
+                  <div key={doc.id} style={{ position: "relative", borderRadius: 16, background: "linear-gradient(180deg, rgba(18,35,59,0.92), rgba(10,18,30,0.96))", border: "1px solid rgba(59,130,246,0.25)", overflow: "hidden", padding: 14, minHeight: 382, display: "flex", flexDirection: "column", transition: "transform 0.18s, border-color 0.18s, box-shadow 0.18s" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.75)"; e.currentTarget.style.boxShadow = "0 22px 55px rgba(37,99,235,0.22)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(59,130,246,0.25)"; e.currentTarget.style.boxShadow = "none"; }}>
+                    <div style={{ height: 206, borderRadius: 14, background: "radial-gradient(circle at 50% 30%, rgba(59,130,246,0.20), transparent 55%), rgba(2,8,23,0.55)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14, overflow: "hidden" }}>
+                      <div style={{ position: "relative", display: "flex", transform: "perspective(800px) rotateY(-8deg)", filter: "drop-shadow(16px 18px 20px rgba(0,0,0,0.55))" }}>
+                        <div style={{ width: 12, background: "linear-gradient(180deg,rgba(255,255,255,0.18),rgba(0,0,0,0.55))", borderRadius: "5px 0 0 5px" }} />
+                        <div style={{ width: 132, height: 180, borderRadius: "0 7px 7px 0", overflow: "hidden", position: "relative", background: "linear-gradient(160deg,#075985,#1e3a8a)" }}>
+                          {doc.coverUrl ? <img src={doc.coverUrl} alt={doc.titre} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /> : <div style={{ width: "100%", height: "100%", padding: 14, boxSizing: "border-box", color: "#fff", fontSize: 16, fontWeight: 950, lineHeight: 1.15, textTransform: "uppercase" }}>{doc.titre}</div>}
+                          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(120deg,rgba(255,255,255,0.16),transparent 45%,rgba(0,0,0,0.20))" }} />
+                          <div style={{ position: "absolute", left: 9, bottom: 9, background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 950, padding: "4px 7px", borderRadius: 4 }}>PDF</div>
                         </div>
-                        {/* Badge PDF sur la couverture */}
-                        <div style={{ position: "absolute", bottom: 5, left: 12, background: "#da3633", color: "#fff", fontSize: 8, fontWeight: 900, padding: "2px 5px", borderRadius: 3, letterSpacing: "0.05em" }}>PDF</div>
+                        <div style={{ width: 8, height: 174, marginTop: 4, background: "rgba(255,255,255,0.75)", borderRadius: "0 6px 6px 0" }} />
                       </div>
                     </div>
 
-                    {/* ── Infos à droite ── */}
-                    <div style={{ flex: 1, padding: "16px 18px", display: "flex", flexDirection: "column", justifyContent: "space-between", minWidth: 0, borderLeft: "1px solid var(--border)" }}>
-                      {/* Haut : titre + badge + taille + description */}
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.titre}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                          <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 4, background: "rgba(218,54,51,0.12)", color: "#f87171", fontWeight: 700, border: "1px solid rgba(218,54,51,0.2)" }}>PDF</span>
-                          {doc.size && <span style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 500 }}>{doc.size}</span>}
-                          {doc.pages > 0 && <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>· {doc.pages} p.</span>}
-                        </div>
-                        {doc.description && (
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0, lineHeight: 1.55, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                            {doc.description}
-                          </p>
-                        )}
+                    <h3 style={{ margin: "0 0 8px", color: "#fff", fontSize: 15, fontWeight: 900, lineHeight: 1.3, minHeight: 38, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{highlight(doc.titre, search)}</h3>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 7, background: "rgba(239,68,68,0.12)", color: "#f87171", fontWeight: 900, border: "1px solid rgba(239,68,68,0.22)" }}>PDF</span>
+                      {doc.size && <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 7, background: "rgba(148,163,184,0.10)", color: "#cbd5e1" }}>{doc.size}</span>}
+                      {doc.pages > 0 && <span style={{ fontSize: 11, padding: "4px 9px", borderRadius: 7, background: "rgba(59,130,246,0.12)", color: "#bfdbfe" }}>{doc.pages} pages</span>}
+                    </div>
+                    {doc.description && <p style={{ color: "#94a3b8", fontSize: 12, lineHeight: 1.55, margin: "0 0 14px", minHeight: 38, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{doc.description}</p>}
+                    <div style={{ marginTop: "auto" }}>
+                      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                        {doc.previewUrl ? <><a href={doc.previewUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "10px 12px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", color: "#fff", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>👁 Ouvrir</a><a href={doc.downloadUrl || doc.fileUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "10px 12px", borderRadius: 10, background: "rgba(15,23,42,0.72)", border: "1px solid rgba(148,163,184,0.18)", color: "#cbd5e1", fontSize: 12, fontWeight: 750, textDecoration: "none" }}><IconDownload /> Télécharger</a></> : doc.fileUrl ? <a href={doc.fileUrl} target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flex: 1, padding: "10px 12px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", color: "#fff", fontSize: 12, fontWeight: 900, textDecoration: "none" }}>👁 Ouvrir</a> : <span style={{ fontSize: 11, color: "#94a3b8", fontStyle: "italic" }}>Pas de lien disponible</span>}
                       </div>
-
-                      {/* Bas : boutons + date + supprimer */}
-                      <div style={{ marginTop: 12 }}>
-                        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                          {doc.previewUrl ? (
-                            <>
-                              <a href={doc.previewUrl} target="_blank" rel="noreferrer"
-                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "#1f6feb", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                                👁 Ouvrir
-                              </a>
-                              <a href={doc.downloadUrl || doc.fileUrl} target="_blank" rel="noreferrer"
-                                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, background: "var(--bg-hover)", border: "1px solid var(--border)", color: "var(--text-secondary)", fontSize: 12, fontWeight: 500, textDecoration: "none" }}>
-                                <IconDownload /> Télécharger
-                              </a>
-                            </>
-                          ) : doc.fileUrl ? (
-                            <a href={doc.fileUrl} target="_blank" rel="noreferrer"
-                              style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "#1f6feb", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                              👁 Ouvrir
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: 11, color: "var(--text-tertiary)", fontStyle: "italic" }}>Pas de lien disponible</span>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          {doc.createdAt?.toDate && (
-                            <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-                              Ajouté le {doc.createdAt.toDate().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-                            </span>
-                          )}
-                          {isProf && (
-                            <button onClick={() => deleteLivre(doc.id)}
-                              style={{ width: 26, height: 26, borderRadius: 6, background: "transparent", border: "1px solid var(--border)", color: "#f85149", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}
-                              onMouseEnter={e => e.currentTarget.style.background = "rgba(248,81,73,0.1)"}
-                              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                              <IconTrash />
-                            </button>
-                          )}
-                        </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        {doc.createdAt?.toDate && <span style={{ fontSize: 10, color: "#64748b" }}>Ajouté le {doc.createdAt.toDate().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>}
+                        {isProf && <button onClick={() => deleteLivre(doc.id)} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.22)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", marginLeft: "auto" }}><IconTrash /></button>}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-            {livres.length > 4 && (
-              <div style={{ marginTop: 12, textAlign: "center" }}>
-                <Link href="/bibliotheque/livres"
-                  style={{ fontSize: 12, color: "#58a6ff", textDecoration: "none", fontWeight: 500 }}>
-                  Voir les {livres.length - 2} autres documents →
-                </Link>
-              </div>
-            )}
+            {filteredLivres.length > 3 && <div style={{ marginTop: 14, textAlign: "center" }}><Link href="/bibliotheque/livres" style={{ fontSize: 12, color: "#38bdf8", textDecoration: "none", fontWeight: 800 }}>Voir les {filteredLivres.length - 3} autres documents →</Link></div>}
           </section>
         </div>
 
-        {/* ══════════════ PIÈCES CAO ══════════════ */}
-        <section style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20, marginBottom: 16, boxShadow: "var(--shadow)" }}>
+        {/* PIÈCES CAO */}
+        <section id="pieces-cao" style={{ borderRadius: 18, padding: 20, marginBottom: 16, ...surface }}>
           <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
             <div>
-              <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--text-primary)" }}>Bibliothèques CAO — Pièces mécaniques</h2>
-              <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "3px 0 0" }}>Modèles 3D prêts à l'emploi — STEP, IGES, SolidWorks, CATIA · {pieces.length} pièce{pieces.length > 1 ? "s" : ""}</p>
+              <h2 style={{ fontSize: 20, fontWeight: 950, margin: 0, color: "#fff" }}>Bibliothèques CAO — Pièces mécaniques</h2>
+              <p style={{ fontSize: 12, color: "#94a3b8", margin: "4px 0 0" }}>Modèles 3D prêts à l'emploi — STEP, IGES, SolidWorks, CATIA · {pieces.length} pièce{pieces.length > 1 ? "s" : ""}</p>
             </div>
-            {isProf && (
-              <button onClick={() => setShowModalPiece(true)}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 13px", borderRadius: 8, background: "#1f6feb", border: "none", color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
-                onMouseEnter={e => e.currentTarget.style.background = "#388bfd"}
-                onMouseLeave={e => e.currentTarget.style.background = "#1f6feb"}>
-                <IconPlus /> Ajouter une pièce
-              </button>
-            )}
+            {isProf && <button onClick={() => setShowModalPiece(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 10, background: "linear-gradient(135deg,#2563eb,#0ea5e9)", border: "none", color: "#fff", fontSize: 12, fontWeight: 850, cursor: "pointer", flexShrink: 0 }}><IconPlus /> Ajouter une pièce</button>}
           </div>
 
-          {/* Filtres */}
           <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, marginBottom: 16 }}>
-            {FILTERS_PIECES.map(filter => (
-              <button key={filter} onClick={() => setActiveFilter(filter)}
-                style={{ padding: "7px 16px", borderRadius: 99, border: "1px solid", cursor: "pointer", fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s",
-                  background: activeFilter === filter ? "#1f6feb" : "transparent",
-                  borderColor: activeFilter === filter ? "#1f6feb" : "var(--border)",
-                  color: activeFilter === filter ? "#fff" : "var(--text-secondary)" }}>
-                {filter}
-              </button>
-            ))}
+            {FILTERS_PIECES.map(filter => <button key={filter} onClick={() => setActiveFilter(filter)} style={{ padding: "8px 16px", borderRadius: 99, border: "1px solid", cursor: "pointer", fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0, background: activeFilter === filter ? "linear-gradient(135deg,#2563eb,#0ea5e9)" : "rgba(15,23,42,0.60)", borderColor: activeFilter === filter ? "rgba(56,189,248,0.7)" : "rgba(148,163,184,0.16)", color: activeFilter === filter ? "#fff" : "#cbd5e1" }}>{filter}</button>)}
           </div>
 
-          {/* Grille */}
-          {filteredPieces.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-tertiary)", fontSize: 13 }}>
-              {isProf ? "Aucune pièce — cliquez sur Ajouter" : "Aucune pièce disponible"}
-            </div>
-          ) : (
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(4,1fr)" : "repeat(8,1fr)", gap: 10 }}>
+          {filteredPieces.length === 0 ? <div style={{ textAlign: "center", padding: "40px 0", color: "#94a3b8", fontSize: 13 }}>{isProf ? "Aucune pièce — cliquez sur Ajouter" : "Aucune pièce disponible"}</div> : (
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : isTablet ? "repeat(4,1fr)" : "repeat(8,1fr)", gap: 12 }}>
               {filteredPieces.map(part => (
-                <div key={part.id} style={{ position: "relative", borderRadius: 12, background: "var(--bg-primary)", border: "1px solid var(--border)", padding: 12, cursor: "pointer", transition: "border-color 0.15s, transform 0.15s, box-shadow 0.15s" }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = "#1f6feb"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(31,107,235,0.15)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-                  {isProf && (
-                    <button onClick={e => { e.stopPropagation(); deletePiece(part.id); }}
-                      style={{ position: "absolute", top: 6, right: 6, zIndex: 2, width: 22, height: 22, borderRadius: 5, background: "rgba(248,81,73,0.1)", border: "1px solid rgba(248,81,73,0.3)", color: "#f85149", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <IconTrash />
-                    </button>
-                  )}
-                  <div style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, opacity: 0.75 }}>
-                    <div style={{ width: 60, height: 60 }}>
-                      {PIECES_SVG[part.titre] || DEFAULT_SVG}
-                    </div>
-                  </div>
-                  <h3 style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 6px", lineHeight: 1.25, minHeight: 28 }}>{highlight(part.titre, search)}</h3>
-                  <div style={{ display: "flex", gap: 3, flexWrap: "wrap", marginBottom: part.fileUrl ? 28 : 6 }}>
-                    {(part.formats || []).map(f => (
-                      <span key={f} style={{ fontSize: 8, color: "var(--text-tertiary)", border: "1px solid var(--border)", borderRadius: 3, padding: "1px 4px", background: "var(--bg-hover)" }}>{f}</span>
-                    ))}
-                  </div>
-                  {part.fileUrl && (
-                    <a href={part.fileUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                      style={{ position: "absolute", right: 8, bottom: 8, width: 28, height: 28, borderRadius: 7, background: "rgba(31,107,235,0.12)", color: "#58a6ff", border: "1px solid rgba(88,166,255,0.4)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}>
-                      <IconDownload />
-                    </a>
-                  )}
+                <div key={part.id} style={{ position: "relative", borderRadius: 14, background: "linear-gradient(180deg,rgba(15,23,42,0.9),rgba(2,8,23,0.92))", border: "1px solid rgba(148,163,184,0.14)", padding: 12, cursor: "pointer", transition: "border-color 0.15s, transform 0.15s, box-shadow 0.15s", minHeight: 160 }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(56,189,248,0.60)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 16px 32px rgba(14,165,233,0.12)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(148,163,184,0.14)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
+                  {isProf && <button onClick={e => { e.stopPropagation(); deletePiece(part.id); }} style={{ position: "absolute", top: 8, right: 8, zIndex: 2, width: 24, height: 24, borderRadius: 6, background: "rgba(248,81,73,0.1)", border: "1px solid rgba(248,81,73,0.3)", color: "#f87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><IconTrash /></button>}
+                  <div style={{ height: 78, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10, color: "#60a5fa", opacity: 0.92 }}><div style={{ width: 64, height: 64 }}>{PIECES_SVG[part.titre] || DEFAULT_SVG}</div></div>
+                  <h3 style={{ fontSize: 11, fontWeight: 850, color: "#fff", margin: "0 0 8px", lineHeight: 1.25, minHeight: 28 }}>{highlight(part.titre, search)}</h3>
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: part.fileUrl ? 30 : 6 }}>{(part.formats || []).map(f => <span key={f} style={{ fontSize: 8, color: "#94a3b8", border: "1px solid rgba(148,163,184,0.16)", borderRadius: 4, padding: "2px 5px", background: "rgba(15,23,42,0.72)" }}>{f}</span>)}</div>
+                  {part.fileUrl && <a href={part.fileUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ position: "absolute", right: 10, bottom: 10, width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.20)", color: "#60a5fa", border: "1px solid rgba(56,189,248,0.40)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none" }}><IconDownload /></a>}
                 </div>
               ))}
             </div>
           )}
         </section>
-
-        {/* ══════════════ STATS DU BAS ══════════════ */}
-        <section style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12 }}>
-          {[
-            { icon: <IconBook />,    value: livres.length,  label: "Documents PDF",                color: "#1f6feb", bg: "rgba(31,107,235,0.1)" },
-            { icon: <IconCube />,    value: pieces.length,  label: "Modèles CAO",                  color: "#3fb950", bg: "rgba(63,185,80,0.1)" },
-            { icon: <IconGlobe />,   value: sites.length,   label: "Sites recommandés",             color: "#9d95e8", bg: "rgba(157,149,232,0.1)" },
-            { icon: <IconRefresh />, value: null,           label: "Mises à jour régulières",       color: "#e07b39", bg: "rgba(224,123,57,0.1)" },
-          ].map((stat, i) => (
-            <div key={i} style={{ borderRadius: 14, background: "var(--bg-card)", border: "1px solid var(--border)", padding: "20px 22px", display: "flex", alignItems: "center", gap: 16, boxShadow: "var(--shadow)" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: stat.bg, color: stat.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{stat.icon}</div>
-              <div>
-                {stat.value !== null && <div style={{ fontSize: 26, fontWeight: 900, color: "var(--text-primary)", lineHeight: 1 }}>{stat.value}</div>}
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: stat.value !== null ? 2 : 0, lineHeight: 1.4 }}>{stat.label}</div>
-              </div>
-            </div>
-          ))}
-        </section>
-
       </div>
     </div>
   );
